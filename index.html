@@ -402,15 +402,16 @@
 <!-- ══════════════════════════════════════════════════
      BOTTOM NAV
 ══════════════════════════════════════════════════ -->
-<nav id="nav" role="navigation" aria-label="Main navigation">
-  <div class="nb rip on" data-p="home"     onclick="App_nav('home')"     role="tab" tabindex="0" aria-selected="true"  aria-label="Home dashboard">    <span class="ni" aria-hidden="true">🏠</span><span class="nl">Home</span></div>
-  <div class="nb rip"    data-p="today"    onclick="App_nav('today')"    role="tab" tabindex="0" aria-selected="false" aria-label="Today's tracker">    <span class="ni" aria-hidden="true">☀️</span><span class="nl">Today</span></div>
-  <div class="nb rip"    data-p="calendar" onclick="App_nav('calendar')" role="tab" tabindex="0" aria-selected="false" aria-label="Calendar">           <span class="ni" aria-hidden="true">📅</span><span class="nl">Calendar</span></div>
-  <div class="nb rip"    data-p="review"   onclick="App_nav('review')"   role="tab" tabindex="0" aria-selected="false" aria-label="Weekly review">      <span class="ni" aria-hidden="true">📊</span><span class="nl">Review</span></div>
-  <div class="nb rip"    data-p="profile"  onclick="App_nav('profile')"  role="tab" tabindex="0" aria-selected="false" aria-label="Profile and settings"><span class="ni" aria-hidden="true">👤</span><span class="nl">Profile</span></div>
-</nav>
+ </div><!-- /app -->
 
-</div><!-- /app -->
+<!-- Fixed layout: Nav is now completely outside the app div -->
+<nav id="nav" role="navigation" aria-label="Main navigation">
+  <div class="nb rip on" data-p="home" onclick="App_nav('home')">...</div>
+  <div class="nb rip" data-p="today" onclick="App_nav('today')">...</div>
+  <div class="nb rip" data-p="calendar" onclick="App_nav('calendar')">...</div>
+  <div class="nb rip" data-p="review" onclick="App_nav('review')">...</div>
+  <div class="nb rip" data-p="profile" onclick="App_nav('profile')">...</div>
+</nav>
 
 <!-- Toast notification -->
 <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
