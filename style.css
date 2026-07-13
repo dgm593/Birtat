@@ -147,33 +147,36 @@ button:focus-visible,
 /* ── Bottom Navigation ── */
 #nav {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
   max-width: 480px;
-  margin: 0 auto;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom));
-  background: rgba(9, 9, 9, 0.96);
+
+  background: rgba(9,9,9,.96);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+
   border-top: 1px solid var(--border);
+
   display: flex;
-  align-items: flex-start;
+  justify-content: space-evenly;
+  align-items: center;
+
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 }
-
-.nb {
-  flex: 1;
+ .nb {
+  flex: 1 1 20%;
+  width: 20%;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  gap: var(--sp-4);
+  align-items: center;
+
+  padding: 8px 0;
   cursor: pointer;
-  padding: var(--sp-10) var(--sp-4);
-  position: relative;
-  overflow: hidden;
-  min-height: 48px;     /* minimum touch target */
-  -webkit-tap-highlight-color: transparent;
 }
 
 .nb .ni {
