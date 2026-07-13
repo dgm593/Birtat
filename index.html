@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="ብርታት"/>
+  <meta name="theme-color" content="#090909"/>
+  <meta name="description" content="ብርታት — Your Personal Growth Operating System"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="stylesheet" href="style.css"/>
+  <title>ብርታት · Birtat</title>
+</head>
+<body>
+<div id="app" role="application" aria-label="ብርታት Personal Growth App">
+
+<!-- ══════════════════════════════════════════════════
+     HOME
+══════════════════════════════════════════════════ -->
+<main id="pg-home" class="page active" role="main" aria-label="Home dashboard">
+  <div class="home-hero">
+    <div class="hero-greeting" id="h-greeting-label" aria-live="polite">Good morning,</div>
+    <h1 class="hero-name">Dagim ✦</h1>
+    <div class="hero-sub" id="h-date-label"></div>
+
+    <!-- Hero card: score ring + summer day -->
+    <div class="hero-card" role="region" aria-label="Today's score and summer progress">
+      <div class="score-ring-wrap" aria-label="Daily score ring">
+        <svg width="130" height="130" viewBox="0 0 130 130" aria-hidden="true">
+          <circle cx="65" cy="65" r="56" fill="none" stroke="#1e1e1e" stroke-width="9"/>
+          <circle cx="65" cy="65" r="56" fill="none" id="h-ring-fill"
+            stroke="#D4AF37" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="351.86" stroke-dashoffset="351.86"
+            style="transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1),stroke 0.4s ease;"/>
+        </svg>
+        <div class="score-ring-center">
+          <div class="score-num t-gold" id="h-score-num" aria-label="Today's score">0</div>
+          <div class="score-lbl">Today /100</div>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-day-label">Summer Day</div>
+        <div class="hero-day-num" id="h-day-num" aria-label="Current summer day">1</div>
+        <div class="hero-day-sub">of 90 days</div>
+        <div class="pbar" style="margin-bottom:8px;" role="progressbar" aria-label="Summer progress" aria-valuemin="0" aria-valuemax="100">
+          <div class="pfill" id="h-summer-bar" style="width:0%"></div>
+        </div>
+        <div class="t-sub" style="font-size:12px;"><span id="h-days-left">89</span> days remaining</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smart stats -->
+  <div class="sh"><span class="t-label">Progress at a Glance</span></div>
+  <div class="smart-stats" role="region" aria-label="Progress statistics">
+    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🔥</div><div class="sstat-val" id="ss-streak">0</div><div class="sstat-lbl">Streak</div></div>
+    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🏆</div><div class="sstat-val" id="ss-longest">0</div><div class="sstat-lbl">Best</div></div>
+    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🙏</div><div class="sstat-val" id="ss-prayer">0%</div><div class="sstat-lbl">Prayer</div></div>
+    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🏋️</div><div class="sstat-val" id="ss-workout">0</div><div class="sstat-lbl">Workouts</div></div>
+    <div class="sstat"><div class="sstat-icon" aria-hidden="true">📚</div><div class="sstat-val" id="ss-reading">0</div><div class="sstat-lbl">Reading</div></div>
+    <div class="sstat"><div class="sstat-icon" aria-hidden="true">💻</div><div class="sstat-val" id="ss-gpafy">0</div><div class="sstat-lbl">GPAfy</div></div>
+  </div>
+
+  <!-- Six Pillars -->
+  <div class="sh"><span class="t-label">Six Growth Pillars</span><span class="sh-r rip" onclick="App_nav('today')" role="button" tabindex="0" aria-label="Go to today's tracker">Track →</span></div>
+  <div class="pillar-row" id="h-pillars" role="region" aria-label="Growth pillars"></div>
+
+  <!-- Today's Focus -->
+  <div class="sh"><span class="t-label">Today's Focus</span><span class="sh-r rip" onclick="App_nav('today')" role="button" tabindex="0" aria-label="Open today's tracker">Open →</span></div>
+  <div class="card"><div id="h-focus" style="padding:4px 0;" aria-live="polite"></div></div>
+
+  <!-- Quick actions -->
+  <div style="display:flex;gap:9px;padding:0 14px 16px;flex-wrap:wrap;" role="group" aria-label="Quick actions">
+    <button class="btn btn-gold rip" onclick="App_nav('today')" aria-label="Open today's tracker">☀️ Today's Tracker</button>
+    <button class="btn btn-out  rip" onclick="App_nav('calendar')" aria-label="Open calendar">📅 Calendar</button>
+    <button class="btn btn-out  rip" onclick="App_nav('review')" aria-label="Open weekly review">📊 Review</button>
+  </div>
+
+  <!-- Score legend -->
+  <div class="sh"><span class="t-label">Score System</span></div>
+  <div class="card">
+    <div class="card-p" style="display:flex;flex-direction:column;gap:10px;" role="list" aria-label="Score colour guide">
+      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--green)" aria-hidden="true"></span><span class="t-sub">90–100 · 🟢 Excellent day</span></div>
+      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--blue)"  aria-hidden="true"></span><span class="t-sub">75–89 · 🔵 Strong day</span></div>
+      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--yellow)" aria-hidden="true"></span><span class="t-sub">60–74 · 🟡 Average day</span></div>
+      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--red)"   aria-hidden="true"></span><span class="t-sub">Below 60 · 🔴 Needs improvement</span></div>
+    </div>
+  </div>
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
+     TODAY
+══════════════════════════════════════════════════ -->
+<main id="pg-today" class="page" role="main" aria-label="Daily habit tracker">
+  <div style="padding:52px 14px 0;">
+    <div class="t-label" id="td-date-lbl" style="margin-bottom:4px;" aria-live="polite"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h1 class="t-title">Daily Tracker</h1>
+      <div style="display:flex;align-items:baseline;gap:4px;background:var(--gold-soft);border:1px solid rgba(212,175,55,.2);border-radius:99px;padding:6px 14px;" aria-label="Daily score">
+        <span class="score-num t-gold" id="td-score" style="font-size:22px;transition:color 0.4s ease;">0</span>
+        <span class="t-sub" style="font-size:11px;">/100</span>
+      </div>
+    </div>
+    <div class="pbar" style="margin-bottom:6px;height:7px;" role="progressbar" aria-label="Daily score progress" aria-valuemin="0" aria-valuemax="100">
+      <div class="pfill" id="td-score-bar" style="width:0%;"></div>
+    </div>
+    <div class="t-sub" style="font-size:12px;margin-bottom:4px;" id="td-score-label" aria-live="polite">Start checking off habits</div>
+  </div>
+
+  <!-- MORNING -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">🌅</span>Morning</div>
+  <div class="card">
+    <div style="padding:10px 0 4px;">
+      <div style="padding:0 16px 8px;"><div class="t-label">Top 3 Priorities</div></div>
+      <div class="pri-row"><span class="pri-num" aria-hidden="true">1.</span><input class="finput" type="text" placeholder="Priority one…" data-k="p1" aria-label="Priority 1"/></div>
+      <div class="pri-row"><span class="pri-num" aria-hidden="true">2.</span><input class="finput" type="text" placeholder="Priority two…" data-k="p2" aria-label="Priority 2"/></div>
+      <div class="pri-row" style="padding-bottom:12px;"><span class="pri-num" aria-hidden="true">3.</span><input class="finput" type="text" placeholder="Priority three…" data-k="p3" aria-label="Priority 3"/></div>
+    </div>
+    <div style="padding:0 16px 12px;">
+      <div class="t-label" style="margin-bottom:8px;" id="mood-label">Mood</div>
+      <div class="mood-row" role="group" aria-labelledby="mood-label">
+        <div class="mood-btn rip" data-m="1" onclick="setMood(1)" role="button" tabindex="0" aria-label="Very sad mood">😔</div>
+        <div class="mood-btn rip" data-m="2" onclick="setMood(2)" role="button" tabindex="0" aria-label="Neutral mood">😐</div>
+        <div class="mood-btn rip" data-m="3" onclick="setMood(3)" role="button" tabindex="0" aria-label="Happy mood">🙂</div>
+        <div class="mood-btn rip" data-m="4" onclick="setMood(4)" role="button" tabindex="0" aria-label="Very happy mood">😊</div>
+        <div class="mood-btn rip" data-m="5" onclick="setMood(5)" role="button" tabindex="0" aria-label="On fire mood">🔥</div>
+      </div>
+    </div>
+    <div style="padding:0 16px 12px;">
+      <div class="t-label" style="margin-bottom:7px;">Wake-up time</div>
+      <input type="time" style="background:var(--raised);border:1.5px solid var(--border);border-radius:9px;padding:10px 14px;color:var(--gold);font-size:15px;font-weight:700;width:100%;transition:border-color 0.15s ease;" aria-label="Wake-up time"/>
+    </div>
+    <div style="padding:0 16px 12px;">
+      <div class="t-label" style="margin-bottom:7px;">Today I will avoid</div>
+      <input class="finput" type="text" placeholder="What are you saying no to?" data-k="avoid" aria-label="What to avoid today"/>
+    </div>
+    <div style="padding:0 16px 14px;">
+      <div class="t-label" style="margin-bottom:7px;">I am grateful for</div>
+      <input class="finput" type="text" placeholder="One thing I am grateful for…" data-k="grateful" aria-label="Gratitude note"/>
+    </div>
+  </div>
+
+  <!-- FAITH (20pts) -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">✝️</span>Faith<span class="pts-badge" id="pts-faith" aria-label="Faith points earned">0/20</span></div>
+  <div class="card" role="group" aria-label="Faith habits">
+    <div class="crow rip" onclick="tc('prayer')" role="checkbox" aria-checked="false" id="row-prayer" tabindex="0" aria-label="Prayed today"><div class="cbox" id="cb-prayer" aria-hidden="true"></div><span class="clabel" id="cl-prayer">🙏 Prayed today</span></div>
+    <div class="crow rip" onclick="tc('bible')"  role="checkbox" aria-checked="false" id="row-bible"  tabindex="0" aria-label="Bible reading"><div class="cbox" id="cb-bible"  aria-hidden="true"></div><span class="clabel" id="cl-bible">📖 Bible reading</span></div>
+    <div class="crow rip" onclick="tc('reflect')" role="checkbox" aria-checked="false" id="row-reflect" tabindex="0" aria-label="Spiritual reflection"><div class="cbox" id="cb-reflect" aria-hidden="true"></div><span class="clabel" id="cl-reflect">🕯️ Spiritual reflection</span></div>
+  </div>
+
+  <!-- DISCIPLINE (20pts) -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">⚔️</span>Discipline<span class="pts-badge" id="pts-discipline" aria-label="Discipline points earned">0/20</span></div>
+  <div class="card" role="group" aria-label="Discipline habits">
+    <div class="crow rip" onclick="tc('noBadHabit')" role="checkbox" aria-checked="false" tabindex="0" aria-label="No bad habit"><div class="cbox" id="cb-noBadHabit" aria-hidden="true"></div><span class="clabel" id="cl-noBadHabit">🚫 No bad habit</span></div>
+    <div class="crow rip" onclick="tc('screenTime')" role="checkbox" aria-checked="false" tabindex="0" aria-label="Screen time under goal"><div class="cbox" id="cb-screenTime" aria-hidden="true"></div><span class="clabel" id="cl-screenTime">📵 Screen time under goal</span></div>
+  </div>
+
+  <!-- HEALTH (20pts) -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">🏋️</span>Health<span class="pts-badge" id="pts-health" aria-label="Health points earned">0/20</span></div>
+  <div class="card" role="group" aria-label="Health habits">
+    <div class="crow rip" onclick="tc('workout')" role="checkbox" aria-checked="false" tabindex="0" aria-label="Worked out"><div class="cbox" id="cb-workout" aria-hidden="true"></div><span class="clabel" id="cl-workout">💪 Worked out</span></div>
+    <div class="crow rip" onclick="tc('sleep')"   role="checkbox" aria-checked="false" tabindex="0" aria-label="Slept well"><div class="cbox" id="cb-sleep"   aria-hidden="true"></div><span class="clabel" id="cl-sleep">😴 Slept well</span></div>
+    <div class="crow rip" onclick="tc('ate')"     role="checkbox" aria-checked="false" tabindex="0" aria-label="Ate enough"><div class="cbox" id="cb-ate"     aria-hidden="true"></div><span class="clabel" id="cl-ate">🍽️ Ate enough</span></div>
+    <div class="numrow"><span class="numlbl">💧 Water</span>
+      <div class="numctl" role="group" aria-label="Water intake glasses">
+        <button class="numbtn" onclick="adjNum('water',-1)" aria-label="Decrease water">−</button>
+        <span class="numval" id="nv-water" aria-live="polite">0</span>
+        <button class="numbtn" onclick="adjNum('water',1)"  aria-label="Increase water">+</button>
+      </div>
+    </div>
+    <div class="numrow" style="padding-bottom:12px;"><span class="numlbl">🥩 Protein</span>
+      <div class="numctl" role="group" aria-label="Protein meals">
+        <button class="numbtn" onclick="adjNum('protein',-1)" aria-label="Decrease protein">−</button>
+        <span class="numval" id="nv-protein" aria-live="polite">0</span>
+        <button class="numbtn" onclick="adjNum('protein',1)"  aria-label="Increase protein">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEARNING (20pts) -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">🧠</span>Learning<span class="pts-badge" id="pts-learning" aria-label="Learning points earned">0/20</span></div>
+  <div class="card" role="group" aria-label="Learning habits">
+    <div class="crow rip" onclick="tc('selfHelp')"          role="checkbox" aria-checked="false" tabindex="0" aria-label="Self-help reading"><div class="cbox" id="cb-selfHelp"         aria-hidden="true"></div><span class="clabel" id="cl-selfHelp">📚 Self-help reading</span></div>
+    <div class="crow rip" onclick="tc('biomedical')"         role="checkbox" aria-checked="false" tabindex="0" aria-label="Biomedical Engineering study"><div class="cbox" id="cb-biomedical"        aria-hidden="true"></div><span class="clabel" id="cl-biomedical">🔬 Biomedical Engineering</span></div>
+    <div class="crow rip" onclick="tc('outsideCurriculum')"  role="checkbox" aria-checked="false" tabindex="0" aria-label="Outside curriculum learning"><div class="cbox" id="cb-outsideCurriculum" aria-hidden="true"></div><span class="clabel" id="cl-outsideCurriculum">🌱 Outside curriculum</span></div>
+  </div>
+
+  <!-- CREATION (10pts) -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">💻</span>Creation<span class="pts-badge" id="pts-creation" aria-label="Creation points earned">0/10</span></div>
+  <div class="card" role="group" aria-label="Creation habits">
+    <div class="crow rip" onclick="tc('gpafy')"        role="checkbox" aria-checked="false" tabindex="0" aria-label="Worked on GPAfy"><div class="cbox" id="cb-gpafy"       aria-hidden="true"></div><span class="clabel" id="cl-gpafy">📱 Worked on GPAfy</span></div>
+    <div class="crow rip" onclick="tc('otherProject')" role="checkbox" aria-checked="false" tabindex="0" aria-label="Worked on another project"><div class="cbox" id="cb-otherProject" aria-hidden="true"></div><span class="clabel" id="cl-otherProject">🛠️ Another project</span></div>
+    <div style="padding:0 16px 14px;margin-top:4px;">
+      <div class="t-label" style="margin-bottom:7px;">GPAfy progress</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="range" min="0" max="100" value="0" id="gpafy-slider"
+          oninput="updateGpafySlider(this.value)" style="flex:1;"
+          aria-label="GPAfy overall progress percentage"/>
+        <span class="t-gold fw7 t-mono" id="gpafy-pct-lbl" style="width:36px;text-align:right;" aria-live="polite">0%</span>
+      </div>
+      <textarea class="finput" rows="2" placeholder="What did I work on today…" data-k="gpafyNote" style="display:block;margin-top:10px;" aria-label="GPAfy work notes"></textarea>
+    </div>
+  </div>
+
+  <!-- RELATIONSHIPS (10pts) -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">👥</span>Relationships<span class="pts-badge" id="pts-relationships" aria-label="Relationships points earned">0/10</span></div>
+  <div class="card" role="group" aria-label="Relationship habits">
+    <div class="crow rip" onclick="tc('meaningful')"  role="checkbox" aria-checked="false" tabindex="0" aria-label="Meaningful conversation"><div class="cbox" id="cb-meaningful"  aria-hidden="true"></div><span class="clabel" id="cl-meaningful">💬 Meaningful conversation</span></div>
+    <div class="crow rip" onclick="tc('familyTime')"  role="checkbox" aria-checked="false" tabindex="0" aria-label="Family or friends time"><div class="cbox" id="cb-familyTime"  aria-hidden="true"></div><span class="clabel" id="cl-familyTime">❤️ Family / friends time</span></div>
+  </div>
+
+  <!-- Screen time -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">📵</span>Screen Time</div>
+  <div class="card">
+    <div class="numrow" style="padding:12px 16px;">
+      <span class="numlbl">Hours today</span>
+      <div class="numctl" role="group" aria-label="Screen hours today">
+        <button class="numbtn" onclick="adjNum('screenHours',-1)" aria-label="Decrease screen hours">−</button>
+        <span class="numval" id="nv-screenHours" aria-live="polite">0</span>
+        <button class="numbtn" onclick="adjNum('screenHours',1)"  aria-label="Increase screen hours">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Night Reflection -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">🌙</span>Night Reflection</div>
+  <div class="card">
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
+      <div><div class="t-label" style="margin-bottom:7px;">What went well?</div><textarea class="finput" rows="3" placeholder="Something that went well today…" data-k="wentWell" style="display:block;" aria-label="What went well today"></textarea></div>
+      <div><div class="t-label" style="margin-bottom:7px;">What can I improve?</div><textarea class="finput" rows="3" placeholder="Something to improve…" data-k="canImprove" style="display:block;" aria-label="What can be improved"></textarea></div>
+      <div><div class="t-label" style="margin-bottom:7px;">Tomorrow's priority</div><textarea class="finput" rows="2" placeholder="Tomorrow I will focus on…" data-k="tomorrow" style="display:block;" aria-label="Tomorrow's top priority"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Memory -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">📖</span>Memory Timeline</div>
+  <div class="card">
+    <div style="padding:14px 16px;">
+      <div class="t-label" style="margin-bottom:7px;">What made today memorable?</div>
+      <textarea class="finput" rows="3" placeholder="One sentence about today that you want to remember…" data-k="memory" style="display:block;" aria-label="Today's memorable moment"></textarea>
+    </div>
+  </div>
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
+     CALENDAR
+══════════════════════════════════════════════════ -->
+<main id="pg-calendar" class="page" role="main" aria-label="90-day calendar">
+  <div class="cal-nav">
+    <button class="cal-nav-btn rip" onclick="calPrev()" aria-label="Previous month">‹</button>
+    <h1 class="cal-month-label" id="cal-month-lbl" aria-live="polite">July 2026</h1>
+    <button class="cal-nav-btn rip" onclick="calNext()" aria-label="Next month">›</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="cal-stats" role="region" aria-label="Challenge statistics">
+    <div class="cstat"><div class="cstat-v" id="cal-streak">0</div><div class="cstat-l">🔥 Streak</div></div>
+    <div class="cstat"><div class="cstat-v" id="cal-done">0</div><div class="cstat-l">✅ Done</div></div>
+    <div class="cstat"><div class="cstat-v" id="cal-best">0</div><div class="cstat-l">🏆 Best</div></div>
+  </div>
+
+  <!-- Colour legend -->
+  <div style="display:flex;gap:12px;padding:0 16px 14px;flex-wrap:wrap;" role="list" aria-label="Calendar colour guide">
+    <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--green)"  aria-hidden="true"></span><span style="font-size:11px;color:var(--muted);">90–100</span></div>
+    <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--yellow)" aria-hidden="true"></span><span style="font-size:11px;color:var(--muted);">60–89</span></div>
+    <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--red)"    aria-hidden="true"></span><span style="font-size:11px;color:var(--muted);">&lt;60</span></div>
+    <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--ghost)"  aria-hidden="true"></span><span style="font-size:11px;color:var(--muted);">No data</span></div>
+    <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--gold)"   aria-hidden="true"></span><span style="font-size:11px;color:var(--muted);">📖 Journal</span></div>
+  </div>
+
+  <!-- Grid -->
+  <div class="cal-grid" role="grid" aria-label="Monthly calendar grid">
+    <div class="cal-wd" role="row" id="cal-weekdays" aria-label="Days of week"></div>
+    <div class="cal-days" role="row" id="cal-days-grid"></div>
+  </div>
+
+  <!-- Day detail -->
+  <div id="cal-detail" style="display:none;margin-top:6px;" aria-live="polite" aria-label="Selected day details"></div>
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
+     REVIEW
+══════════════════════════════════════════════════ -->
+<main id="pg-review" class="page" role="main" aria-label="Weekly review and analytics">
+  <div style="padding:52px 14px 16px;">
+    <div class="t-label" style="margin-bottom:4px;">Weekly</div>
+    <h1 class="t-title">Review &amp; Analytics</h1>
+  </div>
+
+  <div class="week-tabs" id="rv-week-tabs" role="tablist" aria-label="Week selector"></div>
+
+  <div class="sh"><span class="t-label">Rate This Week (1–10)</span></div>
+  <div class="card" id="rv-scores" role="group" aria-label="Weekly scores"></div>
+
+  <div class="sh"><span class="t-label">Weekly Reflection</span></div>
+  <div class="card">
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
+      <div><div class="t-label" style="margin-bottom:7px;">Biggest win</div><textarea class="finput" rows="2" placeholder="My biggest win this week…" id="rv-win" style="display:block;" aria-label="Biggest win this week"></textarea></div>
+      <div><div class="t-label" style="margin-bottom:7px;">Biggest struggle</div><textarea class="finput" rows="2" placeholder="What I struggled with…" id="rv-struggle" style="display:block;" aria-label="Biggest struggle this week"></textarea></div>
+      <div><div class="t-label" style="margin-bottom:7px;">Biggest lesson</div><textarea class="finput" rows="2" placeholder="What I learned…" id="rv-lesson" style="display:block;" aria-label="Biggest lesson this week"></textarea></div>
+      <div><div class="t-label" style="margin-bottom:7px;">Focus next week</div><textarea class="finput" rows="2" placeholder="Next week I will focus on…" id="rv-next" style="display:block;" aria-label="Focus for next week"></textarea></div>
+    </div>
+  </div>
+  <div style="padding:0 14px 16px;">
+    <button class="btn btn-gold w-full rip" onclick="saveReview()" aria-label="Save weekly review">💾 Save Review</button>
+  </div>
+
+  <!-- Analytics -->
+  <div class="sh"><span class="t-label">Analytics</span></div>
+  <div class="card" id="analytics-card">
+    <div style="padding:14px 16px 4px;"><div class="t-label">Habit Consistency</div></div>
+    <div id="analytics-bars" style="padding-bottom:8px;" role="region" aria-label="Habit consistency charts"></div>
+
+    <div style="padding:14px 16px 6px;border-top:1px solid var(--border);">
+      <div class="t-label" style="margin-bottom:10px;">Daily Score Trend</div>
+      <svg id="score-chart" viewBox="0 0 320 80" style="width:100%;height:auto;display:block;overflow:visible;" role="img" aria-label="Daily score trend chart"></svg>
+    </div>
+
+    <div style="padding:14px 16px 6px;border-top:1px solid var(--border);">
+      <div class="t-label" style="margin-bottom:10px;">Weekly Average Score</div>
+      <svg id="weekly-chart" viewBox="0 0 320 80" style="width:100%;height:auto;display:block;overflow:visible;" role="img" aria-label="Weekly average score chart"></svg>
+    </div>
+  </div>
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
+     PROFILE
+══════════════════════════════════════════════════ -->
+<main id="pg-profile" class="page" role="main" aria-label="Profile, statistics, and settings">
+  <div class="profile-top">
+    <svg width="56" height="56" viewBox="0 0 100 100" fill="none" style="margin-bottom:12px;" aria-hidden="true">
+      <g stroke="#D4AF37" stroke-width="4">
+        <line x1="50" y1="10" x2="50" y2="90"/>
+        <line x1="10" y1="38" x2="90" y2="38"/>
+        <line x1="40" y1="10" x2="60" y2="10"/>
+        <line x1="40" y1="90" x2="60" y2="90"/>
+        <line x1="10" y1="28" x2="10" y2="48"/>
+        <line x1="90" y1="28" x2="90" y2="48"/>
+        <polygon points="50,22 42,30 50,38 58,30" fill="#D4AF37" opacity=".8"/>
+        <polygon points="50,30 42,38 50,46 58,38" fill="#D4AF37"/>
+        <circle cx="50" cy="10" r="4" fill="#D4AF37"/>
+        <circle cx="50" cy="90" r="4" fill="#D4AF37"/>
+        <circle cx="10" cy="38" r="4" fill="#D4AF37"/>
+        <circle cx="90" cy="38" r="4" fill="#D4AF37"/>
+      </g>
+    </svg>
+    <div style="font-size:24px;font-weight:700;font-family:Georgia,serif;color:var(--gold);">ብርታት</div>
+    <div class="t-sub" style="margin-top:4px;">Dagim · Summer 2026</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="sh"><span class="t-label">Statistics</span></div>
+  <div class="stat-grid" role="region" aria-label="Overall statistics">
+    <div class="stcard"><div class="stv" id="pf-streak">0</div><div class="stl">🔥 Current Streak</div></div>
+    <div class="stcard"><div class="stv" id="pf-best">0</div><div class="stl">🏆 Best Streak</div></div>
+    <div class="stcard"><div class="stv" id="pf-done">0</div><div class="stl">✅ Days Completed</div></div>
+    <div class="stcard"><div class="stv" id="pf-avg">0</div><div class="stl">📈 Avg Score</div></div>
+  </div>
+
+  <!-- Habit rates -->
+  <div class="sh"><span class="t-label">Habit Rates</span></div>
+  <div class="card"><div id="profile-habit-bars" style="padding:8px 0;" role="region" aria-label="Habit completion rates"></div></div>
+
+  <!-- Memory Timeline -->
+  <div class="sh"><span class="t-label">📖 Memory Timeline</span></div>
+  <div class="card" style="margin-bottom:8px;">
+    <div style="padding:12px 16px;">
+      <input id="mem-search" class="finput" type="search" placeholder="🔍 Search memories…" oninput="filterMemories(this.value)" aria-label="Search memory timeline"/>
+    </div>
+  </div>
+  <div id="mem-timeline" style="margin-bottom:8px;" role="feed" aria-label="Memory timeline entries" aria-live="polite"></div>
+
+  <!-- Settings -->
+  <div class="sh"><span class="t-label">Settings</span></div>
+  <div class="card" style="margin-bottom:8px;" role="group" aria-label="App settings">
+    <div class="set-row rip" onclick="exportData()" role="button" tabindex="0" aria-label="Export all data as JSON">
+      <div class="set-left"><span class="set-icon" aria-hidden="true">📤</span><span class="set-lbl">Export Data (JSON)</span></div>
+      <span class="set-arr" aria-hidden="true">›</span>
+    </div>
+    <div class="set-row rip" onclick="document.getElementById('imp-file').click()" role="button" tabindex="0" aria-label="Import data from backup file">
+      <div class="set-left"><span class="set-icon" aria-hidden="true">📥</span><span class="set-lbl">Import Backup</span></div>
+      <span class="set-arr" aria-hidden="true">›</span>
+    </div>
+    <div class="set-row rip" onclick="confirmReset()" role="button" tabindex="0" aria-label="Reset all app data">
+      <div class="set-left"><span class="set-icon" aria-hidden="true">🗑️</span><span class="set-lbl">Reset All Data</span></div>
+      <span class="set-arr" style="color:var(--red);" aria-hidden="true">›</span>
+    </div>
+  </div>
+  <div style="text-align:center;padding:12px 0 24px;color:var(--ghost);font-size:11px;letter-spacing:.07em;" aria-label="App version">
+    ብርታት · Birtat · v4.0 · Personal Growth OS
+  </div>
+  <input type="file" id="imp-file" accept=".json" style="display:none;" onchange="handleImport(event)" aria-label="Import backup file"/>
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
+     BOTTOM NAV
+══════════════════════════════════════════════════ -->
+<nav id="nav" role="navigation" aria-label="Main navigation">
+  <div class="nb rip on" data-p="home"     onclick="App_nav('home')"     role="tab" tabindex="0" aria-selected="true"  aria-label="Home dashboard">    <span class="ni" aria-hidden="true">🏠</span><span class="nl">Home</span></div>
+  <div class="nb rip"    data-p="today"    onclick="App_nav('today')"    role="tab" tabindex="0" aria-selected="false" aria-label="Today's tracker">    <span class="ni" aria-hidden="true">☀️</span><span class="nl">Today</span></div>
+  <div class="nb rip"    data-p="calendar" onclick="App_nav('calendar')" role="tab" tabindex="0" aria-selected="false" aria-label="Calendar">           <span class="ni" aria-hidden="true">📅</span><span class="nl">Calendar</span></div>
+  <div class="nb rip"    data-p="review"   onclick="App_nav('review')"   role="tab" tabindex="0" aria-selected="false" aria-label="Weekly review">      <span class="ni" aria-hidden="true">📊</span><span class="nl">Review</span></div>
+  <div class="nb rip"    data-p="profile"  onclick="App_nav('profile')"  role="tab" tabindex="0" aria-selected="false" aria-label="Profile and settings"><span class="ni" aria-hidden="true">👤</span><span class="nl">Profile</span></div>
+</nav>
+
+</div><!-- /app -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<!-- PWA install banner -->
+<div class="install-bar" id="install-bar" role="dialog" aria-label="Install Birtat app">
+  <div style="font-size:26px;" aria-hidden="true">📲</div>
+  <div class="ib-text">
+    <strong>Add ብርታት to Home Screen</strong>
+    <span>Install for the full app experience</span>
+  </div>
+  <button class="btn btn-gold rip" onclick="installApp()" style="padding:9px 14px;flex-shrink:0;font-size:13px;" aria-label="Install app">Install</button>
+  <button class="ib-close" onclick="dismissInstall()" aria-label="Dismiss install prompt">✕</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "name": "ብርታት — Birtat",
+  "short_name": "ብርታት",
+  "description": "Your Personal Growth Operating System — 90-day summer challenge tracker",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090909",
+  "theme_color": "#090909",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "categories": ["productivity", "lifestyle", "health", "fitness"],
+  "icons": [
+    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today's Tracker",
+      "short_name": "Today",
+      "description": "Open today's habit tracker",
+      "url": "./index.html#today",
+      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "Open the 90-day calendar",
+      "url": "./index.html#calendar",
+      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "screenshots": []
+}
