@@ -25,8 +25,8 @@
     <h1 class="hero-name">Dagim ✦</h1>
     <div class="hero-sub" id="h-date-label"></div>
 
-    <!-- Hero card: score ring + summer day -->
-    <div class="hero-card" role="region" aria-label="Today's score and summer progress">
+    <!-- Hero card: score ring + semester status -->
+    <div class="hero-card" role="region" aria-label="Today's score and semester progress">
       <div class="score-ring-wrap" aria-label="Daily score ring">
         <svg width="130" height="130" viewBox="0 0 130 130" aria-hidden="true">
           <circle cx="65" cy="65" r="56" fill="none" stroke="#1e1e1e" stroke-width="9"/>
@@ -41,13 +41,13 @@
         </div>
       </div>
       <div class="hero-info">
-        <div class="hero-day-label">Summer Day</div>
-        <div class="hero-day-num" id="h-day-num" aria-label="Current summer day">1</div>
-        <div class="hero-day-sub">of 90 days</div>
-        <div class="pbar" style="margin-bottom:8px;" role="progressbar" aria-label="Summer progress" aria-valuemin="0" aria-valuemax="100">
+        <div class="hero-day-label" id="h-sem-label">Semester</div>
+        <div class="hero-day-num" id="h-day-num" aria-label="Current semester week">—</div>
+        <div class="hero-day-sub" id="h-sem-sub">2026/27 · Semester 1</div>
+        <div class="pbar" style="margin-bottom:8px;" role="progressbar" aria-label="Semester progress" aria-valuemin="0" aria-valuemax="100">
           <div class="pfill" id="h-summer-bar" style="width:0%"></div>
         </div>
-        <div class="t-sub" style="font-size:12px;"><span id="h-days-left">89</span> days remaining</div>
+        <div class="t-sub" style="font-size:12px;"><span id="h-days-left">—</span></div>
       </div>
     </div>
   </div>
@@ -141,6 +141,31 @@
       <div class="t-label" style="margin-bottom:7px;">I am grateful for</div>
       <input class="finput" type="text" placeholder="One thing I am grateful for…" data-k="grateful" aria-label="Gratitude note"/>
     </div>
+  </div>
+
+  <!-- STUDY SESSION -->
+  <div class="tsec" role="heading" aria-level="2"><span class="tsec-icon" aria-hidden="true">🎓</span>Study Session</div>
+  <div class="card">
+    <div class="study-log-form">
+      <div class="t-label">Log focused study</div>
+      <select id="study-course" class="finput" aria-label="Study course">
+        <option value="">Choose course…</option>
+        <option value="dsa">🧠 Data Structures &amp; Algorithms</option>
+        <option value="em">⚡ Electromagnetic Devices &amp; Electrical</option>
+        <option value="tech">🛠️ Appropriate Technology</option>
+        <option value="workshop">🔧 General Workshop</option>
+        <option value="inclusion">🤝 Inclusiveness</option>
+        <option value="electronics">🔌 Applied Electronics I</option>
+        <option value="biochem">🧪 Fundamentals of Bio-Chemistry</option>
+        <option value="bme-skill">🧬 BME Skill Practice</option>
+      </select>
+      <div class="study-log-row">
+        <input id="study-hours" class="finput" type="number" min="0.25" max="24" step="0.25" placeholder="Hours" aria-label="Study hours"/>
+        <input id="study-task" class="finput" type="text" placeholder="What did you work on?" aria-label="Study task"/>
+      </div>
+      <button class="btn btn-gold w-full rip" onclick="addStudySession()">＋ Log Study Session</button>
+    </div>
+    <div id="today-study-log" class="study-log" aria-live="polite"></div>
   </div>
 
   <!-- FAITH (20pts) -->
@@ -247,9 +272,40 @@
 
 
 <!-- ══════════════════════════════════════════════════
+     SEMESTER
+══════════════════════════════════════════════════ -->
+<main id="pg-semester" class="page" role="main" aria-label="Semester command center">
+  <div style="padding:52px 14px 0;">
+    <div class="t-label">ACADEMIC YEAR</div>
+    <h1 class="t-title" id="sem-title">2026/27 · Semester 1</h1>
+    <div class="t-sub" id="sem-date-range"></div>
+  </div>
+  <div class="card sem-overview">
+    <div class="sem-overview-row"><div><div class="t-label">SEMESTER PROGRESS</div><strong id="sem-week">Week 1 of 16</strong></div><strong class="t-gold" id="sem-time-pct">0%</strong></div>
+    <div class="pbar"><div class="pfill" id="sem-time-bar" style="width:0%"></div></div>
+    <div class="sem-stat-row"><div><strong id="sem-course-avg">0%</strong><span>Avg course progress</span></div><div><strong id="sem-study-total">0</strong><span>Study hours</span></div></div>
+  </div>
+  <div class="card sem-notion-card">
+    <div class="card-p">
+      <div class="t-label">ACADEMIC TASKS</div>
+      <h3 style="margin:5px 0 4px;">Notion is your academic database</h3>
+      <div class="t-sub">Assignments, exams, deadlines and course notes stay in Notion. Birtat tracks whether you actually execute.</div>
+      <div class="notion-actions"><button class="btn-primary" onclick="Semester_openNotion()">📋 Open Notion</button><input id="sem-notion-url" class="finput" type="url" placeholder="Your Notion academic page URL" onchange="Semester_saveNotionUrl(this.value)"></div>
+    </div>
+  </div>
+  <div class="sh"><span class="t-label">This week's execution</span></div>
+  <div class="card"><div class="card-p" id="sem-targets"></div></div>
+  <div class="sh"><span class="t-label">Semester courses</span></div>
+  <div id="sem-courses"></div>
+  <div class="sh"><span class="t-label">Semester focus</span></div>
+  <div class="card"><div class="card-p sem-focus-grid"><div>📚<strong>University</strong><span>Grades + course mastery</span></div><div>🧠<strong>BME Skills</strong><span>Technical depth</span></div><div>💪<strong>Health</strong><span>Gym + nutrition + sleep</span></div><div>✝️<strong>Faith</strong><span>Consistency + reflection</span></div><div>📵<strong>Discipline</strong><span>Protect your attention</span></div><div>🧴<strong>Personal</strong><span>Skincare + grooming</span></div></div></div>
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
      CALENDAR
 ══════════════════════════════════════════════════ -->
-<main id="pg-calendar" class="page" role="main" aria-label="90-day calendar">
+<main id="pg-calendar" class="page" role="main" aria-label="Growth calendar">
   <div class="cal-nav">
     <button class="cal-nav-btn rip" onclick="calPrev()" aria-label="Previous month">‹</button>
     <h1 class="cal-month-label" id="cal-month-lbl" aria-live="polite">July 2026</h1>
@@ -257,7 +313,7 @@
   </div>
 
   <!-- Stats -->
-  <div class="cal-stats" role="region" aria-label="Challenge statistics">
+  <div class="cal-stats" role="region" aria-label="Growth statistics">
     <div class="cstat"><div class="cstat-v" id="cal-streak">0</div><div class="cstat-l">🔥 Streak</div></div>
     <div class="cstat"><div class="cstat-v" id="cal-done">0</div><div class="cstat-l">✅ Done</div></div>
     <div class="cstat"><div class="cstat-v" id="cal-best">0</div><div class="cstat-l">🏆 Best</div></div>
@@ -351,7 +407,7 @@
       </g>
     </svg>
     <div style="font-size:24px;font-weight:700;font-family:Georgia,serif;color:var(--gold);">ብርታት</div>
-    <div class="t-sub" style="margin-top:4px;">Dagim · Summer 2026</div>
+    <div class="t-sub" style="margin-top:4px;">Dagim · 2026/27 Semester 1</div>
   </div>
 
   <!-- Stats -->
@@ -393,7 +449,7 @@
     </div>
   </div>
   <div style="text-align:center;padding:12px 0 24px;color:var(--ghost);font-size:11px;letter-spacing:.07em;" aria-label="App version">
-    ብርታት · Birtat · v4.0 · Personal Growth OS
+    ብርታት · Birtat · v6.4 · Semester OS
   </div>
   <input type="file" id="imp-file" accept=".json" style="display:none;" onchange="handleImport(event)" aria-label="Import backup file"/>
 </main>
@@ -402,16 +458,16 @@
 <!-- ══════════════════════════════════════════════════
      BOTTOM NAV
 ══════════════════════════════════════════════════ -->
- </div><!-- /app -->
-
-<!-- Fixed layout: Nav is now completely outside the app div -->
 <nav id="nav" role="navigation" aria-label="Main navigation">
-  <div class="nb rip on" data-p="home" onclick="App_nav('home')">...</div>
-  <div class="nb rip" data-p="today" onclick="App_nav('today')">...</div>
-  <div class="nb rip" data-p="calendar" onclick="App_nav('calendar')">...</div>
-  <div class="nb rip" data-p="review" onclick="App_nav('review')">...</div>
-  <div class="nb rip" data-p="profile" onclick="App_nav('profile')">...</div>
+  <div class="nb rip on" data-p="home"     onclick="App_nav('home')"     role="tab" tabindex="0" aria-selected="true"  aria-label="Home dashboard">    <span class="ni" aria-hidden="true">🏠</span><span class="nl">Home</span></div>
+  <div class="nb rip"    data-p="today"    onclick="App_nav('today')"    role="tab" tabindex="0" aria-selected="false" aria-label="Today's tracker">    <span class="ni" aria-hidden="true">☀️</span><span class="nl">Today</span></div>
+  <div class="nb rip"    data-p="semester" onclick="App_nav('semester')" role="tab" tabindex="0" aria-selected="false" aria-label="Semester"> <span class="ni" aria-hidden="true">🎓</span><span class="nl">Semester</span></div>
+  <div class="nb rip"    data-p="calendar" onclick="App_nav('calendar')" role="tab" tabindex="0" aria-selected="false" aria-label="Calendar">           <span class="ni" aria-hidden="true">📅</span><span class="nl">Calendar</span></div>
+  <div class="nb rip"    data-p="review"   onclick="App_nav('review')"   role="tab" tabindex="0" aria-selected="false" aria-label="Weekly review">      <span class="ni" aria-hidden="true">📊</span><span class="nl">Review</span></div>
+  <div class="nb rip"    data-p="profile"  onclick="App_nav('profile')"  role="tab" tabindex="0" aria-selected="false" aria-label="Profile and settings"><span class="ni" aria-hidden="true">👤</span><span class="nl">Profile</span></div>
 </nav>
+
+</div><!-- /app -->
 
 <!-- Toast notification -->
 <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>

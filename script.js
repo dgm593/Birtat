@@ -32,9 +32,10 @@ const CONFIG = {
   userName:        'Dagim',
   challengeStart:  '2026-07-09',   // YYYY-MM-DD
   challengeDays:   90,
+  semester: { id:'2026-27-s1', name:'2026/27 · Semester 1', start:'2026-09-28', end:'2027-01-31' },
   storageKey:      'birtat-v4',
   legacyKeys:      ['birtat-v3', 'birtat-v2', 'birtat-state'],
-  version:         '4.0.0',
+  version:         '6.4.0',
 
   // Score thresholds
   scoreExcellent:  90,
@@ -86,6 +87,21 @@ const PILLARS = {
 };
 
 const PILLAR_IDS = Object.keys(PILLARS);
+const SEMESTER_COURSES = [
+  {id:'dsa', name:'Data Structures & Algorithms', short:'DSA', icon:'🧠'},
+  {id:'em', name:'Electromagnetic Devices & Electrical...', short:'EM Devices', icon:'⚡'},
+  {id:'tech', name:'Appropriate Technology', short:'Appropriate Tech', icon:'🛠️'},
+  {id:'workshop', name:'General Workshop', short:'Workshop', icon:'🔧'},
+  {id:'inclusion', name:'Inclusiveness', short:'Inclusiveness', icon:'🤝'},
+  {id:'electronics', name:'Applied Electronics I', short:'Electronics I', icon:'🔌'},
+  {id:'biochem', name:'Fundamentals of Bio-Chemistry', short:'Biochemistry', icon:'🧪'},
+];
+
+function Semester_default(){
+  const courses={};
+  SEMESTER_COURSES.forEach(c=>courses[c.id]={progress:0,studyHours:0,assignmentsDone:0,assignmentsTotal:0,assessmentsDone:0,assessmentsTotal:0,note:''});
+  return {id:CONFIG.semester.id,name:CONFIG.semester.name,start:CONFIG.semester.start,end:CONFIG.semester.end,courses,notionUrl:'https://www.notion.so/',targets:{studyHours:18,bmeHours:4,gymSessions:3,faithDays:7,sleepHours:7}};
+}
 
 // Flat list of all habits with metadata
 const HABITS = Object.entries(PILLARS).flatMap(([pid, p]) =>
@@ -155,6 +171,11 @@ function createDayRecord(partial = {}) {
 
     // Backwards-compat: also accept checks (V3 field name)
     // (Merged below in validate())
+
+    // Study sessions — linked to semester courses
+    studySessions: Array.isArray(partial.studySessions) ? partial.studySessions.map(x => ({
+      courseId: x.courseId || '', hours: clamp(parseFloat(x.hours) || 0, 0, 24), task: x.task || ''
+    })) : [],
 
     // Numbers
     water:        clamp(parseInt(partial.water)        || 0, 0, 30),
@@ -253,6 +274,7 @@ let AppState = {
   days:     {},    // { 'YYYY-MM-DD': DayRecord }
   reviews:  {},    // { 'w1': WeekReview }
   settings: {},    // user-configurable settings
+  semester: Semester_default(),
   meta: {
     startDate:      CONFIG.challengeStart,
     longestStreak:  0,
@@ -289,6 +311,7 @@ function Storage_load() {
  */
 function Storage_merge(parsed) {
   if (!parsed || typeof parsed !== 'object') return;
+  if (parsed.semester) { AppState.semester = Object.assign(Semester_default(), parsed.semester); AppState.semester.courses = Object.assign(Semester_default().courses, parsed.semester.courses || {}); }
 
   // Days
   if (parsed.days && typeof parsed.days === 'object') {
@@ -431,7 +454,7 @@ function Utils_isFuture(dateStr) {
   return new Date(dateStr + 'T00:00:00') > t;
 }
 
-/** True if dateStr falls within the summer challenge window */
+/** True if dateStr falls within the preserved legacy challenge window */
 function Utils_isInChallenge(dateStr) {
   const start = new Date(CONFIG.challengeStart);
   const end   = new Date(start);
@@ -713,10 +736,37 @@ function Dashboard_render() {
   DOM_setText('h-greeting-label', Utils_greeting());
   DOM_setText('h-date-label', Utils_fmtDateLong(new Date()));
 
-  // Summer day progress
-  DOM_setText('h-day-num', sd);
-  DOM_setText('h-days-left', CONFIG.challengeDays - sd);
-  DOM_setStyle('h-summer-bar', 'width', Math.round((sd / CONFIG.challengeDays) * 100) + '%');
+  // Current semester status. Summer challenge data remains available as history,
+  // but the home screen now reflects the active academic season.
+  const semStart = new Date(CONFIG.semester.start + 'T00:00:00');
+  const semEnd   = new Date(CONFIG.semester.end + 'T00:00:00');
+  const today    = new Date(todayKey + 'T00:00:00');
+  const semLabel = document.getElementById('h-sem-label');
+  const semSub   = document.getElementById('h-sem-sub');
+  const daysLeft = document.getElementById('h-days-left');
+  if (today < semStart) {
+    const until = Math.ceil((semStart - today) / 86400000);
+    DOM_setText('h-day-num', semStart.toLocaleDateString('en-US', {month:'short', day:'numeric'}));
+    DOM_setText('h-days-left', `${until} day${until === 1 ? '' : 's'} until semester`);
+    if (semLabel) semLabel.textContent = 'Semester starts';
+    if (semSub) semSub.textContent = CONFIG.semester.name;
+    DOM_setStyle('h-summer-bar', 'width', '0%');
+  } else if (today <= semEnd) {
+    const elapsed = Math.floor((today - semStart) / 86400000) + 1;
+    const total = Math.floor((semEnd - semStart) / 86400000) + 1;
+    const week = Math.min(16, Math.floor((elapsed - 1) / 7) + 1);
+    DOM_setText('h-day-num', `W${week}`);
+    DOM_setText('h-days-left', `${Math.max(0, total - elapsed)} days remaining`);
+    if (semLabel) semLabel.textContent = `Week ${week} of 16`;
+    if (semSub) semSub.textContent = CONFIG.semester.name;
+    DOM_setStyle('h-summer-bar', 'width', Math.round((elapsed / total) * 100) + '%');
+  } else {
+    DOM_setText('h-day-num', '✓');
+    DOM_setText('h-days-left', 'Semester complete');
+    if (semLabel) semLabel.textContent = 'Semester complete';
+    if (semSub) semSub.textContent = CONFIG.semester.name;
+    DOM_setStyle('h-summer-bar', 'width', '100%');
+  }
 
   // Score ring
   const ring = document.getElementById('h-ring-fill');
@@ -753,16 +803,17 @@ function Dashboard_render() {
     }).join('');
   }
 
-  // Today's focus — unfinished habits
+  // Today's focus — unfinished habits + study
+  const studyHours=(rec.studySessions||[]).reduce((a,x)=>a+Number(x.hours||0),0);
   const unfin  = HABITS.filter(h => !rec.habits[h.id]);
   const focusEl = document.getElementById('h-focus');
   if (focusEl) {
     if (unfin.length === 0) {
-      focusEl.innerHTML = `<div class="focus-item">
+      focusEl.innerHTML = `<div class="focus-item"><div class="focus-dot"></div><span class="focus-text">🎓 Study logged: ${studyHours.toFixed(1)}h</span></div><div class="focus-item">
         <span style="color:var(--green);font-weight:700;font-size:15px;">🎉 All habits done — ${score}/100 today!</span>
       </div>`;
     } else {
-      focusEl.innerHTML = unfin.slice(0, 7).map(h => {
+      focusEl.innerHTML = `<div class="focus-item"><div class="focus-dot"></div><span class="focus-text">🎓 Study logged: ${studyHours.toFixed(1)}h</span></div>` + unfin.slice(0, 6).map(h => {
         const m = HABIT_META[h.id];
         return `<div class="focus-item">
           <div class="focus-dot"></div>
@@ -826,6 +877,15 @@ function Today_render(dateKey) {
   if (wakeEl) {
     wakeEl.value     = rec.wake || '';
     wakeEl.onchange  = () => { Storage_saveDay(Today_viewDate, { wake: wakeEl.value }); };
+  }
+
+  // Study sessions
+  const studyLog = document.getElementById('today-study-log');
+  if (studyLog) {
+    const sessions = rec.studySessions || [];
+    const names = Object.fromEntries(SEMESTER_COURSES.map(c => [c.id, c.short])); names['bme-skill']='BME Skill';
+    const total = sessions.reduce((a,x)=>a+Number(x.hours||0),0);
+    studyLog.innerHTML = sessions.length ? `<div class="study-total">Today: <strong>${total.toFixed(2)}h</strong></div>` + sessions.map((x,i)=>`<div class="study-item"><div><strong>${names[x.courseId]||x.courseId}</strong><span>${Number(x.hours||0).toFixed(2)}h${x.task ? ' · '+escapeHtml(x.task) : ''}</span></div><button class="icon-btn" onclick="removeStudySession(${i})" aria-label="Remove study session">×</button></div>`).join('') : `<div class="t-sub study-empty">No study sessions logged yet.</div>`;
   }
 
   // GPAfy slider
@@ -933,6 +993,15 @@ function Today_adjustNum(field, delta) {
 }
 
 /** Update GPAfy progress slider */
+function addStudySession(){
+  const course=document.getElementById('study-course')?.value;
+  const hours=document.getElementById('study-hours')?.value;
+  const task=document.getElementById('study-task')?.value || '';
+  Semester_addStudySession(course,hours,task);
+}
+function removeStudySession(index){ Semester_removeStudySession(index); }
+function escapeHtml(v){ return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
 function Today_updateGpafySlider(val) {
   const pct = clamp(parseInt(val), 0, 100);
   Storage_saveDay(Today_viewDate, { gpafyPct: pct });
@@ -1004,7 +1073,7 @@ function Calendar_render() {
     const rec     = AppState.days[dStr];
     const score   = rec ? Scoring_calcDayScore(rec.habits) : 0;
     const isFut   = Utils_isFuture(dStr);
-    const inChal  = Utils_isInChallenge(dStr);
+    const inChal  = true;
     const isToday = dStr === todayStr;
     const isSel   = dStr === Cal_selectedDate;
 
@@ -1038,7 +1107,7 @@ function Calendar_render() {
 
   // Re-render detail if a date is selected
   if (Cal_selectedDate) {
-    if (Utils_isFuture(Cal_selectedDate) || !Utils_isInChallenge(Cal_selectedDate)) {
+    if (Utils_isFuture(Cal_selectedDate)) {
       Cal_selectedDate = null;
       const detail = document.getElementById('cal-detail');
       if (detail) detail.style.display = 'none';
@@ -1173,7 +1242,7 @@ function Review_renderTabs() {
   if (!tabs) return;
   tabs.innerHTML = Array.from({ length: total }, (_, i) => i + 1)
     .map(w => `<div class="week-tab rip ${w === Review_currentWeek ? 'on' : ''}"
-      onclick="Review_selectWeek(${w})">Wk ${w}</div>`)
+      onclick="Review_selectWeek(${w})">W${w}</div>`)
     .join('');
 }
 
@@ -1462,6 +1531,104 @@ function Settings_reset() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   14B. SEMESTER
+═══════════════════════════════════════════════════════════════════════════ */
+function Semester_save(){ Storage_save(); }
+function Semester_dateProgress(){
+  const s=new Date(CONFIG.semester.start+'T00:00:00'), e=new Date(CONFIG.semester.end+'T00:00:00'), n=new Date();
+  const total=Math.max(1,Math.round((e-s)/86400000)+1), elapsed=Math.min(total,Math.max(0,Math.floor((n-s)/86400000)+1));
+  return {pct:Math.round(elapsed/total*100), week:Math.min(16,Math.max(1,Math.floor((elapsed-1)/7)+1)), elapsed,total};
+}
+function Semester_loggedHours(){
+  const totals={};
+  const start=CONFIG.semester.start, end=CONFIG.semester.end;
+  Object.entries(AppState.days||{}).forEach(([date,rec])=>{
+    if(date<start || date>end) return;
+    (rec.studySessions||[]).forEach(x=>{
+      if(!x.courseId) return;
+      totals[x.courseId]=(totals[x.courseId]||0)+Number(x.hours||0);
+    });
+  });
+  return totals;
+}
+function Semester_addStudySession(courseId,hours,task){
+  hours=Number(hours)||0; if(!courseId || hours<=0) return App_toast('Choose a course and enter study time');
+  const rec=Storage_loadDay(Today_viewDate);
+  rec.studySessions=Array.isArray(rec.studySessions)?rec.studySessions:[];
+  rec.studySessions.push({courseId,hours:Math.min(24,hours),task:(task||'').trim()});
+  Storage_saveDay(Today_viewDate,{studySessions:rec.studySessions});
+  Today_render(Today_viewDate); App_toast(`Logged ${hours}h of study`);
+}
+function Semester_removeStudySession(index){
+  const rec=Storage_loadDay(Today_viewDate); if(!rec.studySessions?.[index]) return;
+  rec.studySessions.splice(index,1); Storage_saveDay(Today_viewDate,{studySessions:rec.studySessions}); Today_render(Today_viewDate);
+}
+
+function Semester_weekDates(){
+  const now=new Date(); const day=(now.getDay()+6)%7;
+  const monday=new Date(now); monday.setHours(0,0,0,0); monday.setDate(now.getDate()-day);
+  const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
+  const iso=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),x=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${x}`};
+  return {start:iso(monday),end:iso(sunday)};
+}
+function Semester_weekStats(){
+  const w=Semester_weekDates(), stats={study:0,bme:0,gym:0,faith:0,sleepTotal:0,sleepCount:0};
+  Object.entries(AppState.days||{}).forEach(([date,rec])=>{
+    if(date<w.start||date>w.end) return;
+    (rec.studySessions||[]).forEach(x=>{const h=Number(x.hours||0);stats.study+=h;if(x.courseId==='bme-skill')stats.bme+=h;});
+    if(rec.habits?.workout) stats.gym++;
+    if(rec.habits?.prayer) stats.faith++;
+    const sh=Number(rec.sleepHours||0); if(sh>0){stats.sleepTotal+=sh;stats.sleepCount++;}
+  });
+  stats.sleepAvg=stats.sleepCount?stats.sleepTotal/stats.sleepCount:0;
+  return stats;
+}
+function Semester_targetPct(value,target){return target>0?Math.min(100,Math.round(value/target*100)):0;}
+function Semester_openNotion(){
+  const url=(AppState.semester?.notionUrl||'https://www.notion.so/').trim();
+  window.open(url,'_blank','noopener');
+}
+function Semester_saveNotionUrl(val){
+  const sem=AppState.semester||(AppState.semester=Semester_default()); sem.notionUrl=(val||'').trim()||'https://www.notion.so/'; Storage_save();
+}
+function Semester_render(){
+  const sem=AppState.semester || (AppState.semester=Semester_default());
+  sem.targets=Object.assign({studyHours:18,bmeHours:4,gymSessions:3,faithDays:7,sleepHours:7},sem.targets||{});
+  const prog=Semester_dateProgress();
+  DOM_setText('sem-title',sem.name); DOM_setText('sem-week',`Week ${prog.week} of 16`); DOM_setText('sem-date-range',`${sem.start} → ${sem.end}`);
+  DOM_setText('sem-time-pct',prog.pct+'%'); DOM_setStyle('sem-time-bar','width',prog.pct+'%');
+  const logged=Semester_loggedHours();
+  const cards=SEMESTER_COURSES.map(c=>{const d=sem.courses[c.id]||{}; const hrs=Math.max(Number(d.studyHours||0),Number(logged[c.id]||0)); return `<div class="card sem-course"><div class="sem-course-head"><div><span class="sem-icon">${c.icon}</span><strong>${c.name}</strong><div class="t-sub">${c.short}</div></div><span class="sem-pct">${d.progress||0}%</span></div><div class="pbar"><div class="pfill" style="width:${d.progress||0}%"></div></div><div class="sem-grid"><label>Progress<input type="range" min="0" max="100" value="${d.progress||0}" oninput="Semester_update('${c.id}','progress',this.value)"/></label><label>Study hours<input type="number" min="0" step="0.5" value="${hrs.toFixed(1)}" readonly/></label></div><textarea class="finput sem-note" placeholder="Course notes / next action..." onchange="Semester_update('${c.id}','note',this.value)">${escapeHtml(d.note||'')}</textarea></div>`}).join('');
+  document.getElementById('sem-courses').innerHTML=cards;
+  const totalH=Object.values(logged).reduce((a,h)=>a+Number(h||0),0)+SEMESTER_COURSES.reduce((a,c)=>a+(logged[c.id]?0:Number(sem.courses[c.id]?.studyHours||0)),0);
+  const avg=SEMESTER_COURSES.reduce((a,c)=>a+Number(sem.courses[c.id]?.progress||0),0)/SEMESTER_COURSES.length;
+  DOM_setText('sem-study-total',totalH.toFixed(1)); DOM_setText('sem-course-avg',Math.round(avg)+'%');
+
+  const ws=Semester_weekStats(), t=sem.targets;
+  const targetRows=[
+    ['📚','University study',ws.study,t.studyHours,'h','study'],
+    ['🧠','BME skills',ws.bme,t.bmeHours,'h','bme'],
+    ['💪','Gym',ws.gym,t.gymSessions,'sessions','gym'],
+    ['✝️','Faith',ws.faith,t.faithDays,'days','faith'],
+    ['😴','Sleep average',ws.sleepAvg,t.sleepHours,'h/night','sleep']
+  ];
+  const targetHtml=targetRows.map(([icon,label,val,target,unit,key])=>{const pct=Semester_targetPct(val,target);const shown=key==='sleep'?val.toFixed(1):Number.isInteger(val)?val:val.toFixed(1);return `<div class="target-row"><div class="target-top"><span>${icon} <strong>${label}</strong></span><span><strong>${shown}</strong> / ${target} ${unit}</span></div><div class="pbar"><div class="pfill" style="width:${pct}%"></div></div></div>`}).join('');
+  const targetEditor=`<div class="target-edit-grid"><label>Study h/week<input type="number" min="0" step="1" value="${t.studyHours}" onchange="Semester_updateTarget('studyHours',this.value)"></label><label>BME h/week<input type="number" min="0" step="1" value="${t.bmeHours}" onchange="Semester_updateTarget('bmeHours',this.value)"></label><label>Gym/week<input type="number" min="0" step="1" value="${t.gymSessions}" onchange="Semester_updateTarget('gymSessions',this.value)"></label><label>Faith days/week<input type="number" min="0" max="7" step="1" value="${t.faithDays}" onchange="Semester_updateTarget('faithDays',this.value)"></label><label>Sleep avg<input type="number" min="0" step="0.5" value="${t.sleepHours}" onchange="Semester_updateTarget('sleepHours',this.value)"></label></div>`;
+  const tw=document.getElementById('sem-targets'); if(tw) tw.innerHTML=targetHtml+targetEditor;
+  const nu=document.getElementById('sem-notion-url'); if(nu) nu.value=sem.notionUrl||'https://www.notion.so/';
+}
+function Semester_updateTarget(key,val){
+  const sem=AppState.semester||(AppState.semester=Semester_default()); sem.targets=Object.assign({studyHours:18,bmeHours:4,gymSessions:3,faithDays:7,sleepHours:7},sem.targets||{}); sem.targets[key]=Math.max(0,Number(val)||0); Storage_save(); Semester_render();
+}
+
+function Semester_update(id,key,val){
+  const sem=AppState.semester || (AppState.semester=Semester_default()); if(!sem.courses[id]) sem.courses[id]={};
+  sem.courses[id][key]= key==='note' ? val : Number(val)||0; Storage_save();
+  const pct=sem.courses[id].progress||0; const el=document.querySelector(`[oninput="Semester_update('${id}','progress',this.value)"]`); if(el && key==='progress'){ const parent=el.closest('.sem-course'); parent?.querySelector('.sem-pct') && (parent.querySelector('.sem-pct').textContent=pct+'%'); parent?.querySelector('.pfill') && (parent.querySelector('.pfill').style.width=pct+'%'); }
+  if(key==='studyHours'||key==='progress') Semester_render();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    15. APP
    Navigation, startup, event registration.
    This section wires everything together.
@@ -1493,6 +1660,7 @@ function App_nav(page) {
   switch (page) {
     case 'home':     Dashboard_render();   break;
     case 'today':    Today_render();       break;
+    case 'semester': Semester_render();  break;
     case 'calendar': Calendar_render();    break;
     case 'review':   Review_render();      break;
     case 'profile':  Profile_render();     break;
@@ -1529,7 +1697,7 @@ function App_registerKeyboard() {
 /** Handle deep links from PWA shortcuts (e.g. index.html#today) */
 function App_handleDeepLink() {
   const hash = window.location.hash.replace('#', '');
-  const pages = ['home','today','calendar','review','profile'];
+  const pages = ['home','today','semester','calendar','review','profile'];
   if (pages.includes(hash)) {
     App_nav(hash);
     // Clear hash without reloading

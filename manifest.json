@@ -1,7 +1,7 @@
 {
   "name": "ብርታት — Birtat",
   "short_name": "ብርታት",
-  "description": "Your Personal Growth Operating System — 90-day summer challenge tracker",
+  "description": "Your Personal Growth Operating System — semester execution and personal growth tracker",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -25,7 +25,7 @@
     {
       "name": "Calendar",
       "short_name": "Calendar",
-      "description": "Open the 90-day calendar",
+      "description": "Open the growth calendar",
       "url": "./index.html#calendar",
       "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any" }]
     }
