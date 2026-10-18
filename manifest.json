@@ -1,7 +1,7 @@
 {
   "name": "ብርታት — Birtat",
   "short_name": "ብርታት",
-  "description": "Your Personal Growth Operating System — semester execution and personal growth tracker",
+  "description": "Your personal discipline command center for faith, Biomedical Engineering, fitness and phone discipline",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   BIRTAT V4 · ብርታት · script.js
-   Personal Growth Operating System
+   BIRTAT V7.0 · ብርታት · script.js
+   Personal Discipline Command Center
    
    Architecture: Single-file modular (sections mirror separate module files)
    Sections:
@@ -35,7 +35,7 @@ const CONFIG = {
   semester: { id:'2026-27-s1', name:'2026/27 · Semester 1', start:'2026-09-28', end:'2027-01-31' },
   storageKey:      'birtat-v4',
   legacyKeys:      ['birtat-v3', 'birtat-v2', 'birtat-state'],
-  version:         '6.4.0',
+  version:         '7.0.0',
 
   // Score thresholds
   scoreExcellent:  90,
@@ -89,12 +89,13 @@ const PILLARS = {
 const PILLAR_IDS = Object.keys(PILLARS);
 const SEMESTER_COURSES = [
   {id:'dsa', name:'Data Structures & Algorithms', short:'DSA', icon:'🧠'},
-  {id:'em', name:'Electromagnetic Devices & Electrical...', short:'EM Devices', icon:'⚡'},
+  {id:'em', name:'Electromagnetic Devices and Electrical Machines', short:'EM Devices', icon:'⚡'},
   {id:'tech', name:'Appropriate Technology', short:'Appropriate Tech', icon:'🛠️'},
   {id:'workshop', name:'General Workshop', short:'Workshop', icon:'🔧'},
   {id:'inclusion', name:'Inclusiveness', short:'Inclusiveness', icon:'🤝'},
   {id:'electronics', name:'Applied Electronics I', short:'Electronics I', icon:'🔌'},
   {id:'biochem', name:'Fundamentals of Bio-Chemistry', short:'Biochemistry', icon:'🧪'},
+  {id:'biofluid', name:'Bio-fluid Mechanics', short:'Bio-fluid', icon:'🌊'},
 ];
 
 function Semester_default(){
@@ -174,7 +175,7 @@ function createDayRecord(partial = {}) {
 
     // Study sessions — linked to semester courses
     studySessions: Array.isArray(partial.studySessions) ? partial.studySessions.map(x => ({
-      courseId: x.courseId || '', hours: clamp(parseFloat(x.hours) || 0, 0, 24), task: x.task || ''
+      ...x, courseId: x.courseId || '', hours: clamp(parseFloat(x.hours) || 0, 0, 24), task: x.task || ''
     })) : [],
 
     // Numbers
@@ -336,6 +337,8 @@ function Storage_merge(parsed) {
   if (parsed.meta && typeof parsed.meta === 'object') {
     AppState.meta = Object.assign(AppState.meta, parsed.meta);
   }
+  // Additive V7 migration: preserve V4 records and merge new module data.
+  if (typeof V7_mergeState === 'function') V7_mergeState(parsed);
 }
 
 /** Persist full state to localStorage */
@@ -403,6 +406,7 @@ function Storage_backup() {
 function Storage_restore(jsonText) {
   try {
     const parsed = JSON.parse(jsonText);
+    if (typeof V7_validateImport === 'function' && !V7_validateImport(parsed)) return false;
     Storage_merge(parsed);
     Storage_save();
     return true;
@@ -415,10 +419,12 @@ function Storage_restore(jsonText) {
 /** Wipe all data and reset to defaults */
 function Storage_reset() {
   localStorage.removeItem(CONFIG.storageKey);
-  AppState = {
-    days: {}, reviews: {}, settings: {},
+  CONFIG.legacyKeys.forEach(key => localStorage.removeItem(key));
+  AppState = typeof V7_createInitialState === 'function' ? V7_createInitialState() : {
+    days: {}, reviews: {}, settings: {}, semester: Semester_default(),
     meta: { startDate: CONFIG.challengeStart, longestStreak: 0, version: CONFIG.version },
   };
+  Storage_save();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -433,33 +439,36 @@ function clamp(val, min, max) {
 
 /** Format a Date object as 'YYYY-MM-DD' */
 function Utils_dateKey(d) {
-  return d.toISOString().split('T')[0];
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
 }
 
 /** Today's date key */
 function Utils_today() {
+  const zone=AppState?.profile?.timeZone;
+  if(zone&&zone!=='local'){try{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));if(p.year&&p.month&&p.day)return `${p.year}-${p.month}-${p.day}`;}catch(e){console.warn('[Birtat] Invalid time zone; using device local time',e);}}
   return Utils_dateKey(new Date());
 }
 
 /** Summer / challenge day number (1-based) */
 function Utils_challengeDay() {
-  const start = new Date(CONFIG.challengeStart);
-  const diff  = Math.floor((new Date() - start) / 86400000);
+  const start = new Date(CONFIG.challengeStart + 'T12:00:00');
+  const now = new Date(Utils_today() + 'T12:00:00');
+  const diff  = Math.floor((now - start) / 86400000);
   return clamp(diff + 1, 1, CONFIG.challengeDays);
 }
 
 /** True if dateStr is in the future */
 function Utils_isFuture(dateStr) {
-  const t = new Date(); t.setHours(0, 0, 0, 0);
-  return new Date(dateStr + 'T00:00:00') > t;
+  return String(dateStr) > Utils_today();
 }
 
 /** True if dateStr falls within the preserved legacy challenge window */
 function Utils_isInChallenge(dateStr) {
-  const start = new Date(CONFIG.challengeStart);
+  const start = new Date(CONFIG.challengeStart + 'T12:00:00');
   const end   = new Date(start);
   end.setDate(end.getDate() + CONFIG.challengeDays - 1);
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr + 'T12:00:00');
   return d >= start && d <= end;
 }
 
@@ -477,7 +486,7 @@ function Utils_fmtDateShort(d) {
 
 /** Time-of-day greeting */
 function Utils_greeting() {
-  const h = new Date().getHours();
+  let h = new Date().getHours();try{const zone=AppState?.profile?.timeZone;if(zone&&zone!=='local')h=Number(new Intl.DateTimeFormat('en-US',{hour:'2-digit',hourCycle:'h23',timeZone:zone}).format(new Date()));}catch(e){}
   return h < 12 ? 'Good morning,' : h < 17 ? 'Good afternoon,' : 'Good evening,';
 }
 
@@ -611,26 +620,31 @@ function Scoring_calClass(score) {
    Pure functions — read AppState, return values, never touch DOM.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Iterate over all challenge days up to today, calling cb(dateStr, dayRecord|null) */
+/** Iterate from the original challenge start through today, including null days for streak boundaries. */
 function Stats_eachDay(cb) {
-  const start = new Date(CONFIG.challengeStart);
-  const now   = new Date(); now.setHours(0, 0, 0, 0);
-  for (let i = 0; i < CONFIG.challengeDays; i++) {
-    const d = new Date(start); d.setDate(d.getDate() + i);
-    if (d > now) break;
+  const start = new Date(CONFIG.challengeStart + 'T12:00:00');
+  const now = new Date(Utils_today() + 'T12:00:00');
+  for (let d = new Date(start); d <= now; d.setDate(d.getDate()+1)) {
     const key = Utils_dateKey(d);
     cb(key, AppState.days[key] || null);
   }
 }
 
+/** A day is tracked only when it contains at least one user-entered signal. */
+function Stats_hasData(rec) {
+  if (!rec || typeof rec !== 'object') return false;
+  return Object.values(rec.habits||{}).some(Boolean) || Number(rec.mood)>0 || Number(rec.water)>0 || Number(rec.protein)>0 || Number(rec.screenHours)>0 || Number(rec.gpafyPct)>0 || Number(rec.sleepHours)>0 || !!String(rec.wake||'').trim() || (rec.studySessions||[]).length>0 || (rec.priorities||[]).some(x=>String(x||'').trim()) || !!String(rec.avoid||'').trim() || !!String(rec.grateful||'').trim() || !!String(rec.gpafyNote||'').trim() || !!String(rec.memorableMoment||'').trim() || Object.values(rec.reflection||{}).some(x=>String(x||'').trim());
+}
+function Stats_trackedDays(){let n=0;Stats_eachDay((_,rec)=>{if(Stats_hasData(rec))n++;});return n;}
+
 /** Current streak (days with score >= threshold, counting back from today) */
 function Stats_currentStreak() {
   let streak = 0;
-  const now  = new Date(); now.setHours(0, 0, 0, 0);
+  const now  = new Date(Utils_today() + 'T00:00:00');
   for (let i = 0; i < CONFIG.challengeDays; i++) {
     const d    = new Date(now); d.setDate(d.getDate() - i);
     const rec  = AppState.days[Utils_dateKey(d)];
-    const sc   = rec ? Scoring_calcDayScore(rec.habits) : 0;
+    const sc   = Stats_hasData(rec) ? Scoring_calcDayScore(rec.habits) : 0;
     if (sc >= CONFIG.streakThreshold)         streak++;
     else if (i === 0)                         continue; // today partial — don't break
     else                                      break;
@@ -642,7 +656,7 @@ function Stats_currentStreak() {
 function Stats_longestStreak() {
   let best = 0, cur = 0;
   Stats_eachDay((_, rec) => {
-    const sc = rec ? Scoring_calcDayScore(rec.habits) : 0;
+    const sc = Stats_hasData(rec) ? Scoring_calcDayScore(rec.habits) : 0;
     if (sc >= CONFIG.streakThreshold) { cur++; if (cur > best) best = cur; }
     else cur = 0;
   });
@@ -653,7 +667,7 @@ function Stats_longestStreak() {
 function Stats_completedDays() {
   let n = 0;
   Stats_eachDay((_, rec) => {
-    if (rec && Scoring_calcDayScore(rec.habits) >= CONFIG.streakThreshold) n++;
+    if (Stats_hasData(rec) && Scoring_calcDayScore(rec.habits) >= CONFIG.streakThreshold) n++;
   });
   return n;
 }
@@ -662,7 +676,8 @@ function Stats_completedDays() {
 function Stats_avgScore() {
   let total = 0, n = 0;
   Stats_eachDay((_, rec) => {
-    total += rec ? Scoring_calcDayScore(rec.habits) : 0;
+    if (!Stats_hasData(rec)) return;
+    total += Scoring_calcDayScore(rec.habits);
     n++;
   });
   return n > 0 ? Math.round(total / n) : 0;
@@ -679,6 +694,7 @@ function Stats_habitCount(habitId) {
 function Stats_habitRate(habitId) {
   let total = 0, done = 0;
   Stats_eachDay((_, rec) => {
+    if (!Stats_hasData(rec)) return;
     total++;
     if (rec?.habits?.[habitId]) done++;
   });
@@ -689,29 +705,22 @@ function Stats_habitRate(habitId) {
 function Stats_scoreSeries() {
   const series = [];
   Stats_eachDay((key, rec) => {
-    series.push({
-      dateStr: key,
-      score:   rec ? Scoring_calcDayScore(rec.habits) : 0,
-    });
+    if (!Stats_hasData(rec)) return;
+    series.push({ dateStr: key, score: Scoring_calcDayScore(rec.habits) });
   });
   return series;
 }
 
-/** Array of { week, avgScore } for each completed week */
+/** Average score per Monday-start week, excluding days without records. */
 function Stats_weeklyScores() {
-  const start = new Date(CONFIG.challengeStart);
-  const now   = new Date(); now.setHours(0, 0, 0, 0);
-  const weeks = [];
-  for (let w = 0; w < Math.ceil(CONFIG.challengeDays / 7); w++) {
-    let total = 0, n = 0;
-    for (let d2 = 0; d2 < 7; d2++) {
-      const d = new Date(start); d.setDate(d.getDate() + w * 7 + d2);
-      if (d > now) break;
-      const rec = AppState.days[Utils_dateKey(d)];
-      total += rec ? Scoring_calcDayScore(rec.habits) : 0;
-      n++;
-    }
-    if (n > 0) weeks.push({ week: w + 1, avgScore: Math.round(total / n) });
+  const start = new Date(CONFIG.challengeStart + 'T12:00:00');
+  start.setDate(start.getDate()-((start.getDay()+6)%7));
+  const now = new Date(Utils_today() + 'T12:00:00');
+  const weeks=[];let index=1;
+  for(let ws=new Date(start);ws<=now;ws.setDate(ws.getDate()+7),index++){
+    let total=0,n=0;
+    for(let i=0;i<7;i++){const d=new Date(ws);d.setDate(d.getDate()+i);if(d>now)break;const rec=AppState.days[Utils_dateKey(d)];if(!Stats_hasData(rec))continue;total+=Scoring_calcDayScore(rec.habits);n++;}
+    if(n)weeks.push({week:index,avgScore:Math.round(total/n),trackedDays:n});
   }
   return weeks;
 }
@@ -724,7 +733,8 @@ function Stats_weeklyScores() {
 function Dashboard_render() {
   const todayKey = Utils_today();
   const rec      = Storage_loadDay(todayKey);
-  const score    = Scoring_calcDayScore(rec.habits);
+  const hasData  = Stats_hasData(AppState.days[todayKey]);
+  const score    = hasData ? Scoring_calcDayScore(rec.habits) : null;
   const sd       = Utils_challengeDay();
   const streak   = Stats_currentStreak();
   const longest  = Stats_longestStreak();
@@ -772,16 +782,16 @@ function Dashboard_render() {
   const ring = document.getElementById('h-ring-fill');
   if (ring) {
     const circ   = 2 * Math.PI * 56;
-    ring.style.strokeDashoffset = circ - (score / 100) * circ;
-    ring.style.stroke           = Scoring_color(score);
+    ring.style.strokeDashoffset = circ - ((score||0) / 100) * circ;
+    ring.style.stroke           = score===null ? 'var(--border)' : Scoring_color(score);
   }
   const scoreEl = document.getElementById('h-score-num');
-  if (scoreEl) { scoreEl.textContent = score; scoreEl.style.color = Scoring_color(score); }
+  if (scoreEl) { scoreEl.textContent = score===null ? '—' : score; scoreEl.style.color = score===null ? 'var(--muted)' : Scoring_color(score); }
 
   // Smart stats
   DOM_setText('ss-streak',  streak);
   DOM_setText('ss-longest', longest);
-  DOM_setText('ss-prayer',  Stats_habitRate('prayer') + '%');
+  DOM_setText('ss-prayer',  Stats_trackedDays() ? Stats_habitRate('prayer') + '%' : '—');
   DOM_setText('ss-workout', Stats_habitCount('workout'));
   DOM_setText('ss-reading', Stats_habitCount('selfHelp'));
   DOM_setText('ss-gpafy',   Stats_habitCount('gpafy'));
@@ -792,10 +802,10 @@ function Dashboard_render() {
     grid.innerHTML = PILLAR_IDS.map(pid => {
       const p   = PILLARS[pid];
       const pct = Scoring_pillarPct(pid, rec.habits);
-      return `<div class="pill-card rip ${pct === 100 ? 'full' : ''}" onclick="App_nav('today')">
+      return `<div class="pill-card rip ${hasData && pct === 100 ? 'full' : ''}" onclick="App_nav('today')">
         <div class="pill-icon">${p.icon}</div>
         <div class="pill-name">${p.label}</div>
-        <div class="pill-pct" style="color:${Scoring_color(pct)}">${pct}%</div>
+        <div class="pill-pct" style="color:${hasData?Scoring_color(pct):'var(--muted)'}">${hasData?pct+'%':'—'}</div>
         <div class="pbar" style="margin-top:5px;">
           <div class="pfill ${Scoring_pfillClass(pct)}" style="width:${pct}%"></div>
         </div>
@@ -931,18 +941,19 @@ function Today_setField(dateStr, key, value) {
 /** Recalculate and display the current score */
 function Today_updateScore() {
   const rec   = Storage_loadDay(Today_viewDate);
-  const score = Scoring_calcDayScore(rec.habits);
+  const hasData = Stats_hasData(AppState.days[Today_viewDate]);
+  const score = hasData ? Scoring_calcDayScore(rec.habits) : null;
 
-  DOM_setText('td-score', score);
+  DOM_setText('td-score', score===null ? '—' : score);
   const scoreEl = document.getElementById('td-score');
-  if (scoreEl) scoreEl.style.color = Scoring_color(score);
+  if (scoreEl) scoreEl.style.color = score===null ? 'var(--muted)' : Scoring_color(score);
 
   const bar = document.getElementById('td-score-bar');
   if (bar) {
-    bar.style.width = score + '%';
-    bar.className   = 'pfill ' + Scoring_pfillClass(score);
+    bar.style.width = (score||0) + '%';
+    bar.className   = 'pfill ' + (score===null?'':Scoring_pfillClass(score));
   }
-  DOM_setText('td-score-label', Scoring_label(score));
+  DOM_setText('td-score-label', score===null ? 'No entries recorded yet' : Scoring_label(score));
 
   // Pillar point badges
   PILLAR_IDS.forEach(pid => {
@@ -1326,7 +1337,7 @@ function Analytics_renderHabitBars() {
   el.innerHTML = habitsToShow.map(h => {
     const rate = Stats_habitRate(h.id);
     const cnt  = Stats_habitCount(h.id);
-    const days = Math.max(Utils_challengeDay() - 1, 1);
+    const days = Math.max(Stats_trackedDays(), 1);
     return `<div class="chart-row-bar">
       <span class="crb-icon">${h.icon}</span>
       <span class="crb-label">${h.label}</span>
@@ -1411,18 +1422,11 @@ function Analytics_renderWeeklyBars() {
 
 function Timeline_render(filter) {
   const entries = [];
-  const start   = new Date(CONFIG.challengeStart);
-  const now     = new Date(); now.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < CONFIG.challengeDays; i++) {
-    const d = new Date(start); d.setDate(d.getDate() + i);
-    if (d > now) break;
-    const key = Utils_dateKey(d);
-    const rec = AppState.days[key];
+  for (const [key,rec] of Object.entries(AppState.days||{})) {
     const txt = rec?.memorableMoment?.trim();
-    if (!txt) continue;
+    if (!txt || !/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
     if (filter && !txt.toLowerCase().includes(filter.toLowerCase())) continue;
-    entries.push({ date: d, text: txt, key });
+    entries.push({ date: V7_parseDate(key), text: txt, key });
   }
 
   const container = document.getElementById('mem-timeline');
@@ -1470,7 +1474,7 @@ function Profile_render() {
   DOM_setText('pf-streak', streak);
   DOM_setText('pf-best',   longest);
   DOM_setText('pf-done',   done);
-  DOM_setText('pf-avg',    avg);
+  DOM_setText('pf-avg',    Stats_trackedDays() ? avg : '—');
 
   // Habit rate bars
   const barsEl = document.getElementById('profile-habit-bars');
@@ -1664,6 +1668,7 @@ function App_nav(page) {
     case 'calendar': Calendar_render();    break;
     case 'review':   Review_render();      break;
     case 'profile':  Profile_render();     break;
+    case 'systems':  V7_systemsRender();  break;
   }
 }
 
@@ -1697,7 +1702,7 @@ function App_registerKeyboard() {
 /** Handle deep links from PWA shortcuts (e.g. index.html#today) */
 function App_handleDeepLink() {
   const hash = window.location.hash.replace('#', '');
-  const pages = ['home','today','semester','calendar','review','profile'];
+  const pages = ['home','today','semester','calendar','review','profile','systems'];
   if (pages.includes(hash)) {
     App_nav(hash);
     // Clear hash without reloading
@@ -1787,7 +1792,7 @@ function calNext()             { Cal_nextMonth(); }
 
 // Review
 function selWeek(w)            { Review_selectWeek(w); }
-function Review_saveScore(k,v) { Review_saveScore(k,v); } // already namespaced
+function Review_saveScoreAlias(k,v) { Review_saveScore(k,v); } // compatibility alias; does not override the implementation
 function saveReview()          { Review_save(); }
 
 // Timeline
@@ -1801,14 +1806,314 @@ function installApp()          { App_installPWA(); }
 function dismissInstall()      { App_dismissInstall(); }
 function openDayInTracker(d)   { Today_openDate(d); }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   BIRTAT 7.0 SYSTEMS MODULES
+   Additive modules. Existing v4 day records and keys remain compatible.
+═══════════════════════════════════════════════════════════════════════════ */
+
+const V7_COURSES = [
+  {id:'dsa',name:'Data Structures and Algorithms',short:'DSA',kind:'technical'},
+  {id:'em',name:'Electromagnetic Devices and Electrical Machines',short:'EM Devices',kind:'technical'},
+  {id:'tech',name:'Appropriate Technology',short:'Appropriate Tech',kind:'conceptual'},
+  {id:'workshop',name:'General Workshop',short:'Workshop',kind:'practical'},
+  {id:'inclusion',name:'Inclusiveness',short:'Inclusiveness',kind:'conceptual'},
+  {id:'electronics',name:'Applied Electronics I',short:'Electronics I',kind:'technical'},
+  {id:'biochem',name:'Fundamentals of Biochemistry',short:'Biochemistry',kind:'conceptual'},
+  {id:'biofluid',name:'Bio-fluid Mechanics',short:'Bio-fluid',kind:'technical'}
+];
+
+function V7_defaultProfile(){
+  return {name:'Dagim',wakeTime:'06:00',bedtime:'22:00',faithPriority:1,studyTargetMinutes:180,gymTarget:4,trainingDays:['Monday','Tuesday','Thursday','Saturday'],phoneTargetMinutes:null,phoneCutoff:'21:30',weekStartsMonday:true,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone||'local',weeklyReviewDay:0};
+}
+function V7_defaultTimetable(){
+  const raw=[
+    [1,'biofluid','Bio-fluid Mechanics','10:00','12:00'],[1,'dsa','Data Structures and Algorithms','13:30','15:30'],[1,'workshoplab','General Workshop Lab','15:30','17:30'],
+    [2,'biochem','Fundamentals of Biochemistry','08:00','10:00'],[2,'electronics','Applied Electronics I','10:00','12:00'],[2,'ceed','CEED','15:30','17:30'],
+    [3,'dsa','Data Structures and Algorithms','08:00','10:00'],[3,'inclusion','Inclusiveness','10:00','12:00'],[3,'em','Electromagnetic Devices and Electrical Machines','13:30','15:30'],
+    [4,'electronics','Applied Electronics I','08:00','10:00'],[4,'workshop','General Workshop','10:00','12:00'],[4,'biofluid','Bio-fluid Mechanics','13:30','15:30'],[4,'dsalab','Data Structures and Algorithms Lab','15:30','17:30'],
+    [5,'em','Electromagnetic Devices and Electrical Machines','08:00','10:00'],[5,'biochem','Fundamentals of Biochemistry','10:00','12:00'],[5,'inclusion','Inclusiveness','13:30','15:30'],[5,'electronicslab','Applied Electronics Lab','15:30','17:30']
+  ];
+  return {recurring:raw.map((x,i)=>({id:'class-'+x[0]+'-'+x[1]+'-'+i,dayOfWeek:x[0],courseId:x[1],title:x[2],startTime:x[3],endTime:x[4],location:'Varnero Building, CR 8103',kind:'class',active:true})),exceptions:{},oneOff:[]};
+}
+function V7_createInitialState(){
+  return {days:{},reviews:{},settings:{},semester:Semester_default(),customHabits:[],habitLogs:{},meta:{startDate:CONFIG.challengeStart,longestStreak:0,version:CONFIG.version,schemaVersion:7},schemaVersion:7,profile:V7_defaultProfile(),timetable:V7_defaultTimetable(),tasks:[],academic:{courses:V7_COURSES.map(c=>({...c,credits:'',topics:[],practiceQuestions:[],practicals:[],assignments:[],resources:[],notes:'',mastery:0})),weeklyAllocation:{dsa:210,em:180,tech:90,workshop:180,inclusion:60,electronics:210,biochem:120,biofluid:210},sessions:[],activeSession:null},fitness:{workouts:[],bodyMetrics:[],nutrition:[],templates:{'Upper A':[{name:'Bench press',sets:3,reps:'6-10',weight:''},{name:'Chest-supported row',sets:3,reps:'8-12',weight:''},{name:'Overhead press',sets:2,reps:'8-12',weight:''},{name:'Lat pulldown',sets:3,reps:'8-12',weight:''},{name:'Lateral raise',sets:2,reps:'12-15',weight:''},{name:'Biceps curl',sets:2,reps:'10-15',weight:''},{name:'Triceps pushdown',sets:2,reps:'10-15',weight:''}],'Lower A':[{name:'Squat or leg press',sets:3,reps:'6-10',weight:''},{name:'Romanian deadlift',sets:3,reps:'8-10',weight:''},{name:'Leg curl',sets:3,reps:'10-15',weight:''},{name:'Calf raise',sets:3,reps:'10-15',weight:''},{name:'Plank',sets:3,reps:'30-60 sec',weight:''}],'Upper B':[{name:'Incline dumbbell press',sets:3,reps:'8-12',weight:''},{name:'Lat pulldown or pull-up',sets:3,reps:'8-12',weight:''},{name:'Cable row',sets:3,reps:'8-12',weight:''},{name:'Dumbbell shoulder press',sets:2,reps:'8-12',weight:''},{name:'Chest fly',sets:2,reps:'12-15',weight:''},{name:'Hammer curl',sets:2,reps:'10-15',weight:''},{name:'Overhead triceps extension',sets:2,reps:'10-15',weight:''}],'Lower B':[{name:'Hip hinge or deadlift variation',sets:3,reps:'6-10',weight:''},{name:'Bulgarian split squat',sets:3,reps:'8-12',weight:''},{name:'Leg extension',sets:3,reps:'10-15',weight:''},{name:'Seated leg curl',sets:3,reps:'10-15',weight:''},{name:'Calf raise',sets:3,reps:'10-15',weight:''}]}},phone:{sessions:[],screenLogs:[],distractionLogs:[],activeFocus:null,rules:{morningPhoneFree:true,phoneOutsideStudy:true,eveningCutoff:'21:30',socialMediaLimitMinutes:null,blocklist:[]}},faith:{logs:{},customCommitments:[]},personal:{books:[],readingSessions:[],goals:[],familyCommitments:[]},dailyReviews:{},weeklyReviews:{}};
+}
+function V7_mergeState(parsed){
+  if(!parsed||typeof parsed!=='object')return;
+  const base=V7_createInitialState();
+  if(!AppState.profile)AppState.profile=base.profile;
+  AppState.profile=Object.assign({},base.profile,AppState.profile,parsed.profile||{});
+  if(!AppState.timetable)AppState.timetable=base.timetable;
+  const pt=parsed.timetable||{};
+  AppState.timetable={...base.timetable,...AppState.timetable,...pt,recurring:Array.isArray(pt.recurring)?pt.recurring:(AppState.timetable.recurring||base.timetable.recurring),oneOff:Array.isArray(pt.oneOff)?pt.oneOff:(AppState.timetable.oneOff||[]),exceptions:{...(AppState.timetable.exceptions||{}),...(pt.exceptions||{})}};
+  AppState.tasks=Array.isArray(parsed.tasks)?parsed.tasks:(Array.isArray(AppState.tasks)?AppState.tasks:[]);
+  AppState.customHabits=Array.isArray(parsed.customHabits)?parsed.customHabits:(Array.isArray(AppState.customHabits)?AppState.customHabits:[]);
+  AppState.habitLogs={...(AppState.habitLogs||{}),...(parsed.habitLogs||{})};
+  const oldAcademic=AppState.academic||base.academic, incomingAcademic=parsed.academic||{};
+  const courseMap=new Map();
+  const oldCourses=Array.isArray(oldAcademic.courses)?oldAcademic.courses:[], incomingCourses=Array.isArray(incomingAcademic.courses)?incomingAcademic.courses:[];
+  [...base.academic.courses,...oldCourses,...incomingCourses].forEach(c=>{if(c&&typeof c==='object'&&c.id)courseMap.set(c.id,{...(courseMap.get(c.id)||{}),...c});});
+  V7_COURSES.forEach(c=>{if(!courseMap.has(c.id))courseMap.set(c.id,{...c,credits:'',topics:[],practiceQuestions:[],practicals:[],assignments:[],resources:[],notes:'',mastery:0});});
+  AppState.academic={...base.academic,...oldAcademic,...incomingAcademic,courses:[...courseMap.values()],weeklyAllocation:{...base.academic.weeklyAllocation,...(oldAcademic.weeklyAllocation||{}),...(incomingAcademic.weeklyAllocation||{})},sessions:Array.isArray(incomingAcademic.sessions)?incomingAcademic.sessions:(Array.isArray(oldAcademic.sessions)?oldAcademic.sessions:[]),activeSession:incomingAcademic.activeSession!==undefined?incomingAcademic.activeSession:(oldAcademic.activeSession||null)};
+  const oldFitness=AppState.fitness||base.fitness, incomingFitness=parsed.fitness||{};
+  AppState.fitness={...base.fitness,...oldFitness,...incomingFitness,workouts:Array.isArray(incomingFitness.workouts)?incomingFitness.workouts:(oldFitness.workouts||[]),bodyMetrics:Array.isArray(incomingFitness.bodyMetrics)?incomingFitness.bodyMetrics:(oldFitness.bodyMetrics||[]),nutrition:Array.isArray(incomingFitness.nutrition)?incomingFitness.nutrition:(oldFitness.nutrition||[]),templates:{...base.fitness.templates,...(oldFitness.templates||{}),...(incomingFitness.templates||{})}};Object.keys(base.fitness.templates).forEach(k=>{if(!Array.isArray(AppState.fitness.templates[k])||!AppState.fitness.templates[k].length)AppState.fitness.templates[k]=base.fitness.templates[k];});
+  const oldPhone=AppState.phone||base.phone, incomingPhone=parsed.phone||{};
+  AppState.phone={...base.phone,...oldPhone,...incomingPhone,sessions:Array.isArray(incomingPhone.sessions)?incomingPhone.sessions:(oldPhone.sessions||[]),screenLogs:Array.isArray(incomingPhone.screenLogs)?incomingPhone.screenLogs:(oldPhone.screenLogs||[]),distractionLogs:Array.isArray(incomingPhone.distractionLogs)?incomingPhone.distractionLogs:(oldPhone.distractionLogs||[]),activeFocus:incomingPhone.activeFocus!==undefined?incomingPhone.activeFocus:(oldPhone.activeFocus||null),rules:{...base.phone.rules,...(oldPhone.rules||{}),...(incomingPhone.rules||{})}};
+  const oldFaith=AppState.faith||base.faith, incomingFaith=parsed.faith||{};
+  AppState.faith={...base.faith,...oldFaith,...incomingFaith,logs:{...(oldFaith.logs||{}),...(incomingFaith.logs||{})},customCommitments:Array.isArray(incomingFaith.customCommitments)?incomingFaith.customCommitments:(oldFaith.customCommitments||[])};
+  const oldPersonal=AppState.personal||base.personal, incomingPersonal=parsed.personal||{};
+  AppState.personal={...base.personal,...oldPersonal,...incomingPersonal};
+  ['books','readingSessions','goals','familyCommitments'].forEach(k=>{AppState.personal[k]=Array.isArray(incomingPersonal[k])?incomingPersonal[k]:(Array.isArray(oldPersonal[k])?oldPersonal[k]:[])});
+  AppState.dailyReviews={...(AppState.dailyReviews||{}),...(parsed.dailyReviews||{})};
+  AppState.weeklyReviews={...(AppState.weeklyReviews||{}),...(parsed.weeklyReviews||{})};
+  Object.values(AppState.days||{}).forEach(day=>{if(!Array.isArray(day.studySessions))return;const seen=new Set();day.studySessions=day.studySessions.filter(session=>{if(!session.sessionId)return true;if(seen.has(session.sessionId))return false;seen.add(session.sessionId);return true;});});
+  AppState.tasks=V7_dedupe(AppState.tasks);AppState.academic.sessions=V7_dedupe(AppState.academic.sessions);AppState.fitness.workouts=V7_dedupe(AppState.fitness.workouts);AppState.fitness.bodyMetrics=V7_dedupe(AppState.fitness.bodyMetrics);AppState.fitness.nutrition=V7_dedupe(AppState.fitness.nutrition);AppState.phone.sessions=V7_dedupe(AppState.phone.sessions);AppState.phone.screenLogs=V7_dedupe(AppState.phone.screenLogs);AppState.phone.distractionLogs=V7_dedupe(AppState.phone.distractionLogs);AppState.personal.books=V7_dedupe(AppState.personal.books);AppState.personal.readingSessions=V7_dedupe(AppState.personal.readingSessions);AppState.personal.goals=V7_dedupe(AppState.personal.goals);AppState.personal.familyCommitments=V7_dedupe(AppState.personal.familyCommitments);
+  AppState.schemaVersion=7;
+  AppState.meta=Object.assign({},AppState.meta||{},parsed.meta||{},{schemaVersion:7,version:CONFIG.version});
+}
+function V7_migrateState(){
+  try{const raw=localStorage.getItem(CONFIG.storageKey);if(raw&&!localStorage.getItem('birtat-v4-pre-v7-backup')){let shouldBackup=true;try{const old=JSON.parse(raw);shouldBackup=!old.schemaVersion||Number(old.schemaVersion)<7;}catch(e){shouldBackup=true;}if(shouldBackup)localStorage.setItem('birtat-v4-pre-v7-backup',raw);}}catch(e){console.warn('[Birtat] Could not create pre-V7 snapshot',e);}
+  if(!AppState||typeof AppState!=='object')AppState=V7_createInitialState();
+  V7_mergeState(AppState);
+  // Preserve old habit records and ensure new academic course is available to the legacy semester view.
+  if(!AppState.semester)AppState.semester=Semester_default();
+  const defaults=Semester_default();
+  AppState.semester.courses=Object.assign({},defaults.courses,AppState.semester.courses||{});
+  if(!AppState.semester.targets)AppState.semester.targets=defaults.targets;
+  Storage_save();
+}
+function V7_safeExternalUrl(value){try{const u=new URL(String(value||''));return ['http:','https:'].includes(u.protocol)?u.href:'';}catch(e){return '';}}
+function V7_uuid(prefix='r'){
+  return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
+}
+function V7_dedupe(list){if(!Array.isArray(list))return [];const seen=new Set();return list.filter(item=>{if(!item||typeof item!=='object')return false;const key=item.id?String(item.id):JSON.stringify(item);if(seen.has(key))return false;seen.add(key);return true;});}
+function V7_validateImport(parsed){
+  if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))return false;
+  const known=['days','reviews','settings','semester','meta','schemaVersion','profile','timetable','tasks','academic','fitness','phone','faith','personal','dailyReviews','weeklyReviews','customHabits','habitLogs'];
+  if(!known.some(k=>Object.prototype.hasOwnProperty.call(parsed,k)))return false;
+  if(parsed.days!==undefined&&(!parsed.days||typeof parsed.days!=='object'||Array.isArray(parsed.days)))return false;
+  if(parsed.days&&Object.entries(parsed.days).some(([d,r])=>!/^\d{4}-\d{2}-\d{2}$/.test(d)||!r||typeof r!=='object'||Array.isArray(r)))return false;
+  if(parsed.tasks!==undefined&&!Array.isArray(parsed.tasks))return false;
+  if(parsed.customHabits!==undefined&&!Array.isArray(parsed.customHabits))return false;
+  if(parsed.habitLogs!==undefined&&(!parsed.habitLogs||typeof parsed.habitLogs!=='object'||Array.isArray(parsed.habitLogs)))return false;
+  if(parsed.timetable!==undefined&&(!parsed.timetable||typeof parsed.timetable!=='object'||Array.isArray(parsed.timetable)))return false;
+  if(parsed.timetable?.recurring!==undefined&&!Array.isArray(parsed.timetable.recurring))return false;
+  if(parsed.timetable?.oneOff!==undefined&&!Array.isArray(parsed.timetable.oneOff))return false;
+  if(parsed.timetable?.exceptions!==undefined&&(!parsed.timetable.exceptions||typeof parsed.timetable.exceptions!=='object'||Array.isArray(parsed.timetable.exceptions)))return false;
+  for(const [key,fields] of Object.entries({academic:['sessions','courses'],fitness:['workouts','bodyMetrics','nutrition'],phone:['sessions','screenLogs','distractionLogs'],personal:['books','readingSessions','goals','familyCommitments'],faith:['customCommitments']})){
+    if(parsed[key]!==undefined&&(!parsed[key]||typeof parsed[key]!=='object'||Array.isArray(parsed[key])))return false;
+    for(const field of fields)if(parsed[key]?.[field]!==undefined&&!Array.isArray(parsed[key][field]))return false;
+  }
+  return true;
+}
+function V7_today(){return Utils_dateKey(new Date());}
+function V7_parseDate(key){const [y,m,d]=String(key).split('-').map(Number);return new Date(y,(m||1)-1,d||1,12,0,0,0);}
+function V7_timeMinutes(t){const [h,m]=String(t||'0:0').split(':').map(Number);return (h||0)*60+(m||0);}
+function V7_nowTime(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function V7_dayName(n){return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n];}
+function V7_shortDate(k){return V7_parseDate(k).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});}
+function V7_currentWeek(){const d=V7_parseDate(V7_today());const shift=(d.getDay()+6)%7;d.setDate(d.getDate()-shift);return Utils_dateKey(d);}
+function V7_weekEnd(){const d=V7_parseDate(V7_currentWeek());d.setDate(d.getDate()+6);return Utils_dateKey(d);}
+function V7_getCourse(id){return (AppState.academic?.courses||[]).find(c=>c.id===id);}
+function V7_save(){AppState.meta=AppState.meta||{};AppState.meta.schemaVersion=7;AppState.meta.version=CONFIG.version;Storage_save();}
+function V7_getFaith(date=V7_today()){if(!AppState.faith.logs[date])AppState.faith.logs[date]={};return AppState.faith.logs[date];}
+function V7_getEvents(date){
+  const d=V7_parseDate(date), dow=d.getDay();
+  const exceptions=AppState.timetable.exceptions||{};
+  const base=(AppState.timetable.recurring||[]).filter(e=>e.active!==false&&Number(e.dayOfWeek)===dow).map(e=>{
+    const ex=exceptions[date+':'+e.id]||{};return {...e,...ex,source:'recurring',recurringId:e.id,date};
+  }).filter(e=>e.status!=='cancelled');
+  const once=(AppState.timetable.oneOff||[]).filter(e=>e.date===date&&e.status!=='cancelled').map(e=>({...e,source:'oneOff'}));
+  const tasks=(AppState.tasks||[]).filter(t=>t.date===date&&t.startTime&&t.endTime&&t.status!=='cancelled'&&!t.done).map(t=>({...t,id:'task-'+t.id,title:t.title,kind:'task',source:'task'}));
+  return [...base,...once,...tasks].sort((a,b)=>V7_timeMinutes(a.startTime)-V7_timeMinutes(b.startTime));
+}
+function V7_eventConflicts(date,start,end,ignoreId=''){
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(start||''))||!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(end||'')))return 'Enter valid 24-hour times (HH:MM).';const s=V7_timeMinutes(start),e=V7_timeMinutes(end);if(e<=s)return 'End time must be after start time.';
+  for(const ev of V7_getEvents(date)){
+    if(ev.id===ignoreId||ev.recurringId===ignoreId)continue;
+    const es=V7_timeMinutes(ev.startTime),ee=V7_timeMinutes(ev.endTime);
+    if(s<ee&&e>es)return `Overlaps ${ev.title} (${ev.startTime}–${ev.endTime}).`;
+  }
+  return '';
+}
+function V7_openSystemTab(tab){
+  V7_systemTab=tab||'faith';
+  document.querySelectorAll('.sys-tab').forEach(b=>b.classList.toggle('on',b.dataset.sys===V7_systemTab));
+  document.querySelectorAll('.sys-panel').forEach(p=>p.hidden=p.dataset.panel!==V7_systemTab);
+  V7_renderSystemTab();
+}
+let V7_systemTab='faith';
+let V7_timerInterval=null;
+let V7_focusInterval=null;
+function V7_renderSystemTab(){
+  switch(V7_systemTab){case'faith':V7_renderFaith();break;case'academics':V7_renderAcademics();break;case'timetable':V7_renderTimetable();break;case'fitness':V7_renderFitness();break;case'phone':V7_renderPhone();break;case'personal':V7_renderPersonal();break;case'habits':V7_renderHabits();break;case'reviews':V7_renderSystemsReview();break;case'settings':V7_renderSettings();break;}
+}
+function V7_systemsRender(){V7_openSystemTab(V7_systemTab);}
+function V7_renderFaith(){
+  const d=V7_today(), log=V7_getFaith(d), items=[['morningPrayer','Morning prayer'],['eveningPrayer','Evening prayer'],['scripture','Scripture reading'],['spiritualBook','Spiritual book reading'],['church','Church / church commitment'],['fasting','Optional fasting commitment'],['reflection','Personal reflection and gratitude']];
+  const el=document.getElementById('faith-checklist');if(!el)return;
+  el.innerHTML=items.map(([id,label])=>`<label class="v7-check"><input type="checkbox" ${log[id]?'checked':''} onchange="V7_setFaith('${id}',this.checked)"><span>${label}</span></label>`).join('')+
+    (AppState.faith.customCommitments||[]).map(c=>{const weekly=c.frequency==='weekly',scheduled=c.frequency==='daily'||weekly||(c.weekdays||[]).includes(V7_parseDate(d).getDay());return `<div class="v7-custom-faith ${scheduled||weekly?'':'is-unscheduled'}"><label class="v7-check"><input type="checkbox" ${!!log['custom_'+c.id]?'checked':''} ${scheduled||weekly?'':'disabled'} onchange="V7_setFaith('custom_${c.id}',this.checked)"><span>${escapeHtml(c.name)} <small>${weekly?'Weekly commitment':scheduled?'Scheduled today':'Not scheduled today'}</small></span><button type="button" class="v7-inline" onclick="V7_removeCustomFaith('${c.id}')" aria-label="Retire commitment">×</button></label></div>`}).join('');
+  const done=items.filter(([id])=>log[id]).length;document.getElementById('faith-summary').textContent=`${done} of ${items.length} standard commitments recorded today. This is a personal log, not a measure of faith.`;
+  document.getElementById('faith-custom-name').value='';
+}
+function V7_setFaith(id,value){const l=V7_getFaith();l[id]=!!value;V7_save();V7_renderFaith();V7_renderDashboard();}
+function V7_applyFaithRoutine(kind){const l=V7_getFaith();if(kind==='short'){l.morningPrayer=true;l.eveningPrayer=true;}else{l.morningPrayer=true;l.eveningPrayer=true;l.scripture=true;l.spiritualBook=true;l.reflection=true;}V7_save();V7_renderFaith();V7_renderDashboard();App_toast(kind==='short'?'Short routine recorded':'Full routine recorded');}
+function V7_addCustomFaith(){const input=document.getElementById('faith-custom-name'),name=(input?.value||'').trim(),frequency=document.getElementById('faith-custom-frequency').value,weekdays=[...document.querySelectorAll('#faith-custom-days input:checked')].map(x=>Number(x.value));if(!name)return App_toast('Enter a commitment name');if(frequency==='custom'&&!weekdays.length)return App_toast('Choose at least one weekday');AppState.faith.customCommitments.push({id:V7_uuid('faith'),name,frequency,weekdays:frequency==='custom'?weekdays:[],active:true});V7_save();V7_renderFaith();App_toast('Commitment added');}
+function V7_removeCustomFaith(id){if(!confirm('Retire this commitment? Its previous daily logs will be kept.'))return;AppState.faith.customCommitments=AppState.faith.customCommitments.filter(x=>x.id!==id);V7_save();V7_renderFaith();}
+function V7_renderAcademics(){
+  const select=document.getElementById('study-v7-course');if(!select)return;
+  const courses=AppState.academic.courses;
+  const old=select.value;select.innerHTML=courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');if(courses.some(c=>c.id===old))select.value=old;
+  const date=V7_today(),mins=(AppState.academic.sessions||[]).filter(s=>s.date===date).reduce((n,s)=>n+Number(s.durationMinutes||0),0);
+  document.getElementById('v7-study-today').textContent=`${Math.floor(mins/60)}h ${mins%60}m / ${(Number(AppState.profile.studyTargetMinutes??180)/60).toFixed(Number(AppState.profile.studyTargetMinutes??180)%60?1:0)}h target`;
+  const weekStart=V7_currentWeek(),weekEnd=V7_parseDate(weekStart);weekEnd.setDate(weekEnd.getDate()+6);const endKey=Utils_dateKey(weekEnd);
+  const wmins=(AppState.academic.sessions||[]).filter(s=>s.date>=weekStart&&s.date<=endKey).reduce((n,s)=>n+Number(s.durationMinutes||0),0);
+  document.getElementById('v7-study-week').textContent=`${(wmins/60).toFixed(1)} focused hours this week`;
+  const active=AppState.academic.activeSession;const timer=document.getElementById('v7-study-timer');if(timer)timer.textContent=active?V7_formatElapsed(Date.now()-new Date(active.startedAt).getTime()):'00:00:00';
+  const sessionBtn=document.getElementById('v7-study-toggle');if(sessionBtn)sessionBtn.textContent=active?'End study session':'Start study session';
+  const sessions=(AppState.academic.sessions||[]).slice().sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt))).slice(0,12);
+  document.getElementById('v7-study-history').innerHTML=sessions.length?sessions.map(s=>`<div class="v7-list-row"><div><strong>${escapeHtml(V7_getCourse(s.courseId)?.name||s.courseId||'Independent study')}</strong><div class="v7-muted">${escapeHtml(s.topic||'No topic')} · ${s.durationMinutes||0} min · ${escapeHtml(s.method||'Study')}</div>${s.output?`<div class="v7-muted">Output: ${escapeHtml(s.output)}</div>`:''}</div><span>${escapeHtml(s.date||'')}</span></div>`).join(''):'<p class="v7-empty">No independent study sessions logged yet.</p>';
+  document.getElementById('v7-course-list').innerHTML=courses.map(c=>`<details class="v7-course"><summary><span><strong>${escapeHtml(c.name)}</strong><small>${c.kind==='technical'?'Problem-solving focus':c.kind==='practical'?'Practical focus':'Concepts and active recall'} · ${(AppState.academic.sessions.filter(s=>s.courseId===c.id&&s.date>=V7_currentWeek()&&s.date<=V7_weekEnd()).reduce((n,s)=>n+Number(s.durationMinutes||0),0)/60).toFixed(1)}h this week</small></span><span class="v7-mastery">${Number(c.mastery||0)}/5</span></summary><div class="v7-form-grid"><label>Credit hours<input class="finput" type="number" min="0" step="0.5" value="${escapeHtml(c.credits||'')}" onchange="V7_updateCourse('${c.id}','credits',this.value)"></label><label>Mastery / 5<input class="finput" type="number" min="0" max="5" value="${Number(c.mastery||0)}" onchange="V7_updateCourse('${c.id}','mastery',this.value)"></label></div><label>Topics / weak areas<textarea class="finput" rows="2" placeholder="One topic per line" onchange="V7_updateCourse('${c.id}','topicsText',this.value)">${escapeHtml((c.topics||[]).join('\n'))}</textarea></label><label>Practice questions / problem sets<textarea class="finput" rows="2" placeholder="One question or problem set per line" onchange="V7_updateCourse('${c.id}','practiceText',this.value)">${escapeHtml((c.practiceQuestions||[]).join('\n'))}</textarea></label><label>Practical exercises / lab work<textarea class="finput" rows="2" placeholder="One lab or practical task per line" onchange="V7_updateCourse('${c.id}','practicalsText',this.value)">${escapeHtml((c.practicals||[]).join('\n'))}</textarea></label><label>Course notes<textarea class="finput" rows="2" placeholder="What you learned, next action..." onchange="V7_updateCourse('${c.id}','notes',this.value)">${escapeHtml(c.notes||'')}</textarea></label></details>`).join('');
+  V7_renderAllocation();
+  const resourceHost=document.getElementById('v7-resource-list');if(resourceHost)resourceHost.innerHTML=courses.flatMap(c=>(c.resources||[]).map(r=>`<div class="v7-list-row"><div><strong>${escapeHtml(r.title)}</strong><small>${escapeHtml(c.short)}${r.url?' · '+escapeHtml(r.url):''}</small></div><button class="v7-inline" onclick="V7_removeResource('${c.id}','${r.id}')">Remove</button></div>`)).join('')||'<p class="v7-empty">No resource references saved.</p>';
+  const taskSelect=document.getElementById('v7-task-course');taskSelect.innerHTML='<option value="">General task</option>'+courses.map(c=>`<option value="${c.id}">${escapeHtml(c.short)}</option>`).join('');
+  const tasks=AppState.academic.courses.flatMap(c=>(c.assignments||[]).map(a=>({...a,courseName:c.short,courseId:c.id}))).sort((a,b)=>String(a.dueDate||'9999').localeCompare(String(b.dueDate||'9999')));
+  document.getElementById('v7-assignments').innerHTML=tasks.length?tasks.map(a=>`<div class="v7-list-row"><label class="v7-check"><input type="checkbox" ${a.done?'checked':''} onchange="V7_toggleAssignment('${a.courseId}','${a.id}',this.checked)"><span><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(a.courseName)} · ${escapeHtml(a.dueDate||'No deadline')}</small></span></label><button class="v7-inline" onclick="V7_removeAssignment('${a.courseId}','${a.id}')">Remove</button></div>`).join(''):'<p class="v7-empty">No assignments or practical tasks added.</p>';
+}
+function V7_renderAllocation(){const host=document.getElementById('v7-allocation');if(!host)return;const a=AppState.academic.weeklyAllocation||{};host.innerHTML=AppState.academic.courses.map(c=>`<label class="v7-allocation-row"><span>${escapeHtml(c.short)}</span><input class="finput" type="number" min="0" max="1260" step="15" value="${Number(a[c.id]||0)}" onchange="V7_setAllocation('${c.id}',this.value)"><small>min/wk</small></label>`).join('');const total=Object.values(a).reduce((n,x)=>n+Number(x||0),0);const totalEl=document.getElementById('v7-allocation-total');if(totalEl)totalEl.textContent=`${(total/60).toFixed(1)} suggested hours/week`;}
+function V7_setAllocation(id,val){AppState.academic.weeklyAllocation=AppState.academic.weeklyAllocation||{};AppState.academic.weeklyAllocation[id]=Math.max(0,Math.min(1260,Math.round((Number(val)||0)/15)*15));V7_save();V7_renderAllocation();}
+function V7_formatElapsed(ms){const sec=Math.max(0,Math.floor(ms/1000)),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return [h,m,s].map(n=>String(n).padStart(2,'0')).join(':');}
+function V7_toggleStudy(){
+  const active=AppState.academic.activeSession;
+  if(active){const end=Date.now(),started=new Date(active.startedAt).getTime(),elapsed=Math.max(1,Math.floor((end-started)/60000));let mins=elapsed;if(elapsed>240){const corrected=prompt(`Timer elapsed ${elapsed} minutes. If it was left running, enter actual focused minutes (1–240).`, '60');if(corrected===null)return;mins=Math.round(Number(corrected));if(!Number.isFinite(mins)||mins<1||mins>240)return App_toast('Enter actual focused minutes from 1 to 240');}const session={...active,id:active.id||V7_uuid('study'),endedAt:new Date(end).toISOString(),durationMinutes:mins,date:active.date||V7_today()};AppState.academic.sessions.push(session);const rec=Storage_loadDay(session.date);rec.studySessions=Array.isArray(rec.studySessions)?rec.studySessions:[];if(!rec.studySessions.some(x=>x.sessionId===session.id)){rec.studySessions.push({sessionId:session.id,courseId:session.courseId,hours:mins/60,task:session.topic||session.output||'Independent study',topic:session.topic,method:session.method,output:session.output,mastery:session.mastery,notes:session.notes,startedAt:session.startedAt,endedAt:session.endedAt,durationMinutes:mins});Storage_saveDay(session.date,{studySessions:rec.studySessions});}AppState.academic.activeSession=null;V7_save();if(V7_timerInterval){clearInterval(V7_timerInterval);V7_timerInterval=null;}App_toast(`Saved ${mins} focused minutes`);
+  }else{const courseId=document.getElementById('study-v7-course').value,topic=document.getElementById('v7-study-topic').value.trim(),method=document.getElementById('v7-study-method').value,output=document.getElementById('v7-study-output').value.trim(),mastery=Number(document.getElementById('v7-study-mastery').value||0),notes=document.getElementById('v7-study-notes').value.trim();AppState.academic.activeSession={id:V7_uuid('study'),courseId,topic,method,output,mastery,notes,startedAt:new Date().toISOString(),date:V7_today()};V7_save();if(V7_timerInterval)clearInterval(V7_timerInterval);V7_timerInterval=setInterval(()=>{if(V7_systemTab==='academics')V7_renderAcademics();},1000);App_toast('Study session started. Breaks should be logged outside the timer.');}
+  V7_renderAcademics();V7_renderDashboard();
+}
+function V7_logManualStudy(){if(AppState.academic.activeSession)return App_toast('End the active timer before adding a manual session');const courseId=document.getElementById('study-v7-course').value,minutes=Math.round(Number(document.getElementById('v7-study-minutes').value)||0),topic=document.getElementById('v7-study-topic').value.trim(),method=document.getElementById('v7-study-method').value,output=document.getElementById('v7-study-output').value.trim(),mastery=Number(document.getElementById('v7-study-mastery').value||0),notes=document.getElementById('v7-study-notes').value.trim();if(minutes<1||minutes>1440)return App_toast('Enter focused minutes from 1 to 1440');const now=new Date(),id=V7_uuid('study'),session={id,courseId,topic,method,output,mastery,notes,startedAt:new Date(now.getTime()-minutes*60000).toISOString(),endedAt:now.toISOString(),date:V7_today(),durationMinutes:minutes,manual:true};AppState.academic.sessions.push(session);const rec=Storage_loadDay(session.date);rec.studySessions=rec.studySessions||[];rec.studySessions.push({sessionId:id,courseId,hours:minutes/60,task:topic||output||'Independent study',topic,method,output,mastery,notes,durationMinutes:minutes,startedAt:session.startedAt,endedAt:session.endedAt});Storage_saveDay(session.date,{studySessions:rec.studySessions});V7_save();V7_renderAcademics();V7_renderDashboard();App_toast(`Logged ${minutes} focused minutes`);}
+function V7_updateCourse(id,key,val){const c=V7_getCourse(id);if(!c)return;if(key==='topicsText')c.topics=String(val).split('\n').map(x=>x.trim()).filter(Boolean);else if(key==='practiceText')c.practiceQuestions=String(val).split('\n').map(x=>x.trim()).filter(Boolean);else if(key==='practicalsText')c.practicals=String(val).split('\n').map(x=>x.trim()).filter(Boolean);else if(key==='mastery')c.mastery=clamp(Number(val)||0,0,5);else if(key==='credits')c.credits=String(val);else c[key]=val;V7_save();if(key==='mastery')V7_renderAcademics();}
+function V7_addAssignment(){const title=document.getElementById('v7-task-title').value.trim(),courseId=document.getElementById('v7-task-course').value,dueDate=document.getElementById('v7-task-due').value;if(!title)return App_toast('Enter a task title');const c=V7_getCourse(courseId);if(!c)return App_toast('Choose a course');c.assignments=c.assignments||[];c.assignments.push({id:V7_uuid('assignment'),title,dueDate,done:false,createdAt:new Date().toISOString()});document.getElementById('v7-task-title').value='';V7_save();V7_renderAcademics();}
+function V7_toggleAssignment(courseId,id,done){const c=V7_getCourse(courseId),a=c?.assignments?.find(x=>x.id===id);if(a){a.done=!!done;a.completedAt=done?new Date().toISOString():null;V7_save();V7_renderAcademics();V7_renderDashboard();}}
+function V7_removeAssignment(courseId,id){const c=V7_getCourse(courseId);if(c){c.assignments=(c.assignments||[]).filter(a=>a.id!==id);V7_save();V7_renderAcademics();}}
+function V7_removeResource(courseId,id){const c=V7_getCourse(courseId);if(c){c.resources=(c.resources||[]).filter(r=>r.id!==id);V7_save();V7_renderAcademics();}}
+function V7_addResource(){const courseId=document.getElementById('v7-resource-course').value,title=document.getElementById('v7-resource-title').value.trim(),url=document.getElementById('v7-resource-url').value.trim();const c=V7_getCourse(courseId);if(!c||!title)return App_toast('Add a course and resource title');c.resources=c.resources||[];c.resources.push({id:V7_uuid('resource'),title,url,createdAt:new Date().toISOString()});V7_save();document.getElementById('v7-resource-title').value='';document.getElementById('v7-resource-url').value='';V7_renderAcademics();App_toast('Resource saved');}
+function V7_renderTimetable(){
+  const dateInput=document.getElementById('v7-agenda-date');if(!dateInput)return;if(!dateInput.value)dateInput.value=V7_today();const date=dateInput.value;
+  const events=V7_getEvents(date),all=AppState.timetable.recurring||[];
+  document.getElementById('v7-agenda-title').textContent=V7_shortDate(date)+' · '+V7_dayName(V7_parseDate(date).getDay());
+  document.getElementById('v7-agenda-events').innerHTML=events.length?events.map(e=>`<div class="v7-event"><div class="v7-event-time">${escapeHtml(e.startTime)}–${escapeHtml(e.endTime)}</div><div class="v7-event-main"><strong>${escapeHtml(e.title)}</strong><small>${escapeHtml(e.location||'Personal block')} · ${escapeHtml(e.kind||'event')}</small>${e.kind==='class'&&e.source==='recurring'?`<button class="v7-inline" onclick="V7_cancelOccurrence('${date}','${e.recurringId}')">Cancel this class</button><button class="v7-inline" onclick="V7_editOccurrence('${date}','${e.recurringId}')">Edit occurrence</button><button class="v7-inline" onclick="V7_editRecurring('${e.recurringId}')">Edit recurring class</button>`:e.source==='oneOff'?`<button class="v7-inline" onclick="V7_cancelOneOff('${e.id}')">Cancel event</button><button class="v7-inline" onclick="V7_editOneOff('${e.id}')">Edit</button>`:e.source==='task'?`<button class="v7-inline" onclick="V7_markTaskDone('${e.id.replace('task-','')}')">Mark done</button><button class="v7-inline" onclick="V7_rescheduleTask('${e.id.replace('task-','')}')">Reschedule</button><button class="v7-inline" onclick="V7_cancelTask('${e.id.replace('task-','')}')">Cancel</button>`:''}</div></div>`).join(''):'<p class="v7-empty">No scheduled events. Keep some time open for recovery or choose a task.</p>';
+  const free=[];let cursor=8*60;for(const e of events){const s=V7_timeMinutes(e.startTime),end=V7_timeMinutes(e.endTime);if(s>cursor)free.push(`${V7_minTime(cursor)}–${V7_minTime(s)} (${Math.round((s-cursor)/60*10)/10}h free)`);cursor=Math.max(cursor,end);}if(cursor<20*60)free.push(`${V7_minTime(cursor)}–20:00 (${Math.round((20*60-cursor)/60*10)/10}h free)`);
+  document.getElementById('v7-free-time').textContent=free.length?free.join(' · '):'No gaps detected in the 08:00–20:00 window.';
+  const weekStart=V7_parseDate(date);weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+6)%7));
+  document.getElementById('v7-week-grid').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);const k=Utils_dateKey(d),ev=V7_getEvents(k);return `<div class="v7-weekday"><strong>${V7_dayName(d.getDay())}</strong><small>${V7_shortDate(k)}</small>${ev.map(e=>`<button class="v7-week-event" onclick="V7_setAgendaDate('${k}')"><b>${escapeHtml(e.startTime)}</b> ${escapeHtml(e.title)}</button>`).join('')||'<small class="v7-muted">No events</small>'}</div>`}).join('');
+  const recurring=document.getElementById('v7-recurring-list');recurring.innerHTML=all.map(e=>{const ex=AppState.timetable.exceptions[date+':'+e.id];return `<div class="v7-list-row"><div><strong>${escapeHtml(V7_dayName(e.dayOfWeek))} · ${escapeHtml(e.title)}</strong><div class="v7-muted">${escapeHtml(e.startTime)}–${escapeHtml(e.endTime)} · ${escapeHtml(e.location||'')}</div></div><span><button class="v7-inline" onclick="V7_editRecurring('${e.id}')">Edit</button>${ex?`<button class="v7-inline" onclick="V7_restoreOccurrence('${date}','${e.id}')">Reset occurrence</button>`:''}</span></div>`}).join('');
+}
+function V7_minTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
+function V7_setAgendaDate(date){document.getElementById('v7-agenda-date').value=date;V7_renderTimetable();}
+function V7_restoreOccurrence(date,id){delete AppState.timetable.exceptions[date+':'+id];V7_save();V7_renderTimetable();V7_renderDashboard();App_toast('Recurring class restored for this date');}
+function V7_cancelOccurrence(date,id){const master=AppState.timetable.recurring.find(e=>e.id===id);AppState.timetable.exceptions[date+':'+id]={status:'cancelled'};V7_save();V7_renderTimetable();V7_renderDashboard();App_toast('Only this class occurrence was cancelled. The recurring class remains.');if(master&&confirm('The time is now free. Add an optional flexible block for study, gym, an assignment, recovery, or leave it free?')){const choice=prompt('Enter a task or type recovery. Leave blank to keep the time free.','Independent study');if(choice&&choice.trim().toLowerCase()!=='recovery'){AppState.tasks.push({id:V7_uuid('task'),title:choice.trim(),date:date,startTime:master.startTime,endTime:master.endTime,priority:'normal',status:'scheduled',done:false,createdAt:new Date().toISOString()});V7_save();V7_renderTimetable();V7_renderDashboard();}else if(choice&&choice.trim())App_toast('Recovery time left open by choice.');}}
+function V7_editOccurrence(date,id){const master=AppState.timetable.recurring.find(e=>e.id===id);if(!master)return;const old=AppState.timetable.exceptions[date+':'+id]||{};const title=prompt('Class title',old.title||master.title);if(title===null)return;const startTime=prompt('Start time (24-hour HH:MM)',old.startTime||master.startTime);if(startTime===null)return;const endTime=prompt('End time (24-hour HH:MM)',old.endTime||master.endTime);if(endTime===null)return;const conflict=V7_eventConflicts(date,startTime,endTime,id);if(conflict)return App_toast(conflict);if(V7_timeMinutes(endTime)<=V7_timeMinutes(startTime))return App_toast('End time must be after start time');AppState.timetable.exceptions[date+':'+id]={...old,title,startTime,endTime,status:'edited'};V7_save();V7_renderTimetable();V7_renderDashboard();}
+function V7_editRecurring(id){const e=AppState.timetable.recurring.find(x=>x.id===id);if(!e)return;const title=prompt('Recurring class name',e.title);if(title===null)return;const dayRaw=prompt('Day of week: 0=Sunday, 1=Monday ... 6=Saturday',String(e.dayOfWeek));if(dayRaw===null)return;const dayOfWeek=Number(dayRaw);if(!Number.isInteger(dayOfWeek)||dayOfWeek<0||dayOfWeek>6)return App_toast('Enter a weekday number from 0 to 6');const startTime=prompt('Start time (24-hour HH:MM)',e.startTime);if(startTime===null)return;const endTime=prompt('End time (24-hour HH:MM)',e.endTime);if(endTime===null)return;const location=prompt('Location',e.location||'');if(location===null)return;if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)||V7_timeMinutes(endTime)<=V7_timeMinutes(startTime))return App_toast('Enter valid 24-hour times');const a=V7_timeMinutes(startTime),b=V7_timeMinutes(endTime),conflict=AppState.timetable.recurring.find(x=>x.id!==id&&x.active!==false&&Number(x.dayOfWeek)===dayOfWeek&&a<V7_timeMinutes(x.endTime)&&b>V7_timeMinutes(x.startTime));if(conflict)return App_toast('Overlaps another recurring class: '+conflict.title);const onceConflict=AppState.timetable.oneOff.find(x=>x.status!=='cancelled'&&V7_parseDate(x.date).getDay()===dayOfWeek&&a<V7_timeMinutes(x.endTime)&&b>V7_timeMinutes(x.startTime));if(onceConflict)return App_toast('Overlaps one-off event on '+onceConflict.date+': '+onceConflict.title);const taskConflict=AppState.tasks.find(x=>x.status!=='cancelled'&&!x.done&&x.startTime&&x.endTime&&V7_parseDate(x.date).getDay()===dayOfWeek&&a<V7_timeMinutes(x.endTime)&&b>V7_timeMinutes(x.startTime));if(taskConflict)return App_toast('Overlaps personal block on '+taskConflict.date+': '+taskConflict.title);e.title=title.trim()||e.title;e.dayOfWeek=dayOfWeek;e.startTime=startTime;e.endTime=endTime;e.location=location.trim();V7_save();V7_renderTimetable();V7_renderDashboard();}
+function V7_addClass(){const title=document.getElementById('v7-class-title').value.trim(),date=document.getElementById('v7-class-date').value,startTime=document.getElementById('v7-class-start').value,endTime=document.getElementById('v7-class-end').value,location=document.getElementById('v7-class-location').value.trim();if(!title||!date||!startTime||!endTime)return App_toast('Fill in event title, date and times');const conflict=V7_eventConflicts(date,startTime,endTime);if(conflict)return App_toast(conflict);const event={id:V7_uuid('event'),title,date,startTime,endTime,location,kind:'class',status:'scheduled'};AppState.timetable.oneOff.push(event);V7_save();V7_setAgendaDate(date);document.getElementById('v7-class-title').value='';App_toast('One-off class added');}
+function V7_cancelOneOff(id){const e=AppState.timetable.oneOff.find(x=>x.id===id);if(e){e.status='cancelled';V7_save();V7_renderTimetable();V7_renderDashboard();}}
+function V7_editOneOff(id){const e=AppState.timetable.oneOff.find(x=>x.id===id);if(!e)return;const title=prompt('Event name',e.title);if(title===null)return;const startTime=prompt('Start time',e.startTime);if(startTime===null)return;const endTime=prompt('End time',e.endTime);if(endTime===null)return;const conflict=V7_eventConflicts(e.date,startTime,endTime,id);if(conflict)return App_toast(conflict);e.title=title;e.startTime=startTime;e.endTime=endTime;V7_save();V7_renderTimetable();}
+function V7_rescheduleTask(id){const t=AppState.tasks.find(x=>x.id===id);if(!t)return;const date=prompt('New date YYYY-MM-DD',t.date||V7_today());if(date===null)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return App_toast('Use YYYY-MM-DD');const startTime=prompt('New start time HH:MM',t.startTime||'14:00');if(startTime===null)return;const endTime=prompt('New end time HH:MM',t.endTime||'15:00');if(endTime===null)return;const conflict=V7_eventConflicts(date,startTime,endTime,'task-'+id);if(conflict)return App_toast(conflict);t.date=date;t.startTime=startTime;t.endTime=endTime;t.status='scheduled';t.done=false;V7_save();V7_renderTimetable();V7_renderDashboard();}
+function V7_cancelTask(id){const t=AppState.tasks.find(x=>x.id===id);if(t){t.status='cancelled';V7_save();V7_renderTimetable();V7_renderDashboard();}}
+function V7_markTaskDone(id){const t=AppState.tasks.find(x=>x.id===id);if(t){t.done=true;t.completedAt=new Date().toISOString();V7_save();V7_renderTimetable();V7_renderDashboard();App_toast('Task completed');}}
+function V7_addTimeBlock(){const title=document.getElementById('v7-block-title').value.trim(),date=document.getElementById('v7-block-date').value,startTime=document.getElementById('v7-block-start').value,endTime=document.getElementById('v7-block-end').value,priority=document.getElementById('v7-block-priority').value;if(!title||!date||!startTime||!endTime)return App_toast('Fill in task, date and times');const conflict=V7_eventConflicts(date,startTime,endTime);if(conflict)return App_toast(conflict);AppState.tasks.push({id:V7_uuid('task'),title,date,startTime,endTime,priority,status:'scheduled',done:false,createdAt:new Date().toISOString()});V7_save();V7_setAgendaDate(date);document.getElementById('v7-block-title').value='';App_toast('Time block scheduled');}
+function V7_renderFitness(){
+  const dayHost=document.getElementById('v7-training-days');if(dayHost){const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];dayHost.innerHTML=days.map(d=>`<label><input type="checkbox" value="${d}" ${(AppState.profile.trainingDays||[]).includes(d)?'checked':''}> ${d.slice(0,3)}</label>`).join('');}
+  const workouts=AppState.fitness.workouts||[],today=V7_today(),start=V7_currentWeek(),end=V7_parseDate(start);end.setDate(end.getDate()+6);const endKey=Utils_dateKey(end);const week=workouts.filter(w=>w.date>=start&&w.date<=endKey&&w.status==='completed');
+  const gymTarget=Number(AppState.profile.gymTarget??4);document.getElementById('v7-gym-week').textContent=`${week.length} / ${gymTarget} sessions this week`;
+  document.getElementById('v7-gym-bar').style.width=gymTarget>0?Math.min(100,week.length/gymTarget*100)+'%':'0%';
+  document.getElementById('v7-workout-history').innerHTML=workouts.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,12).map(w=>`<div class="v7-workout"><div class="v7-list-row"><div><strong>${escapeHtml(w.template||'Workout')} · ${escapeHtml(w.date)}</strong><div class="v7-muted">${Number(w.durationMinutes||0)} min · ${escapeHtml(w.status||'completed')}</div></div><span><button class="v7-inline" onclick="V7_setWorkoutStatus('${w.id}','rescheduled')">Reschedule</button><button class="v7-inline" onclick="V7_setWorkoutStatus('${w.id}','skipped')">Skip</button></span></div>${(w.exercises||[]).map(e=>`<div class="v7-exercise">${escapeHtml(e.name)} · ${e.sets}×${escapeHtml(e.reps)}${e.weight!==''?` · ${escapeHtml(e.weight)} kg`:''}${e.restSeconds?` · rest ${escapeHtml(e.restSeconds)}s`:''}</div>`).join('')}${w.notes?`<p class="v7-muted">${escapeHtml(w.notes)}</p>`:''}</div>`).join('')||'<p class="v7-empty">No workouts logged yet. Rest days are valid and are not counted as missed sessions.</p>';
+  const byTemplate={};workouts.filter(w=>w.status==='completed').sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(w=>{byTemplate[w.template]=byTemplate[w.template]||[];byTemplate[w.template].push(w);});const progressHost=document.getElementById('v7-progressive-overload');if(progressHost){const rows=Object.entries(byTemplate).filter(([k,v])=>v.length>=2).map(([name,arr])=>{const prev=arr[arr.length-2],last=arr[arr.length-1],volume=w=>{let n=0,valid=false;for(const e of w.exercises){const reps=String(e.reps||'').trim(),weight=String(e.weight||'').trim();if(/^\d+(?:\.\d+)?$/.test(reps)&&/^\d+(?:\.\d+)?$/.test(weight)){n+=(Number(e.sets)||0)*Number(reps)*Number(weight);valid=true;}}return valid?n:null;},a=volume(prev),b=volume(last);return `<div class="v7-list-row"><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(prev.date)} → ${escapeHtml(last.date)}</small></div><span>${a===null||b===null?'Enter exact reps and weight to compare':`${a.toFixed(0)} → ${b.toFixed(0)} kg-reps`}</span></div>`;});progressHost.innerHTML=rows.join('')||'<p class="v7-empty">Log the same template twice to compare recorded exercises. Exact numeric reps and weight are needed for kg-rep volume.</p>'; }const weekSets=week.reduce((n,w)=>n+(w.exercises||[]).reduce((a,e)=>a+(Number(e.sets)||0),0),0);const setsEl=document.getElementById('v7-gym-volume');if(setsEl)setsEl.textContent=`${weekSets} sets recorded this week`;
+  V7_renderNutrition();const metrics=AppState.fitness.bodyMetrics||[];const trendHost=document.getElementById('v7-body-trend'),weights=metrics.filter(m=>Number(m.weightKg)>0).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));if(trendHost)trendHost.textContent=weights.length>=2?`Recorded weight: ${weights[0].weightKg} kg (${weights[0].date}) → ${weights[weights.length-1].weightKg} kg (${weights[weights.length-1].date}); change ${(Number(weights[weights.length-1].weightKg)-Number(weights[0].weightKg)>0?'+':'')+(Number(weights[weights.length-1].weightKg)-Number(weights[0].weightKg)).toFixed(1)} kg.`:weights.length===1?`Latest recorded weight: ${weights[0].weightKg} kg on ${weights[0].date}. Add another measurement to compare.`:'No body-weight trend yet; weight logging is optional.';document.getElementById('v7-body-history').innerHTML=metrics.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8).map(m=>`<div class="v7-list-row"><strong>${escapeHtml(m.date)}</strong><span>${m.weightKg!==''?escapeHtml(m.weightKg)+' kg':'Weight not entered'}${m.waistCm?` · Waist ${escapeHtml(m.waistCm)} cm`:''}${V7_safeExternalUrl(m.photoRef)?` · <a href="${escapeHtml(V7_safeExternalUrl(m.photoRef))}" target="_blank" rel="noopener noreferrer">Photo reference</a>`:''}</span></div>`).join('')||'<p class="v7-empty">Body measurements are optional. Add a measurement when useful.</p>';
+}
+function V7_saveTrainingDays(){const days=[...document.querySelectorAll('#v7-training-days input:checked')].map(x=>x.value);if(days.length!==Number(AppState.profile.gymTarget??4))return App_toast(`Choose exactly ${AppState.profile.gymTarget} training days, or update the weekly target in Settings.`);AppState.profile.trainingDays=days;V7_save();App_toast('Training days saved');}
+function V7_loadWorkoutTemplate(){const template=document.getElementById('v7-workout-template').value,items=AppState.fitness.templates[template]||[];if(!items.length)return App_toast('Choose a built-in split template');document.getElementById('v7-workout-exercises').value=items.map(e=>[e.name,e.sets,e.reps,e.weight||'',e.restSeconds||''].join(' | ')).join('\n');}
+function V7_addWorkout(){const template=document.getElementById('v7-workout-template').value,date=document.getElementById('v7-workout-date').value||V7_today(),durationMinutes=Math.max(0,Math.round(Number(document.getElementById('v7-workout-duration').value)||0)),raw=document.getElementById('v7-workout-exercises').value,notes=document.getElementById('v7-workout-notes').value.trim();const exercises=raw.split('\n').map(line=>line.trim()).filter(Boolean).map(line=>{const [name,sets,reps,weight,restSeconds]=line.split('|').map(x=>x.trim());return {name:name||'Exercise',sets:Math.max(0,Number(sets)||0),reps:reps||'',weight:weight||'',restSeconds:restSeconds||'',notes:''};});if(!exercises.length)return App_toast('Add at least one exercise line');AppState.fitness.workouts.push({id:V7_uuid('workout'),template,date,durationMinutes,exercises,notes,status:'completed',createdAt:new Date().toISOString()});const day=Storage_loadDay(date);day.habits.workout=true;Storage_saveDay(date,{habits:day.habits});V7_save();document.getElementById('v7-workout-exercises').value='';document.getElementById('v7-workout-notes').value='';V7_renderFitness();V7_renderDashboard();App_toast('Workout saved');}
+function V7_setWorkoutStatus(id,status){const w=AppState.fitness.workouts.find(x=>x.id===id);if(!w)return;let reason='';if(status!=='completed'){const response=prompt(status==='rescheduled'?'Optional rescheduling note':'Optional reason for skipping',w.reason||'');reason=response===null?(w.reason||''):response;}w.status=status;w.reason=reason;const otherCompleted=AppState.fitness.workouts.some(x=>x.id!==id&&x.date===w.date&&x.status==='completed');if(status!=='completed'&&!otherCompleted){const rec=Storage_loadDay(w.date);rec.habits.workout=false;Storage_saveDay(w.date,{habits:rec.habits});}else if(status==='completed'){const rec=Storage_loadDay(w.date);rec.habits.workout=true;Storage_saveDay(w.date,{habits:rec.habits});}V7_save();V7_renderFitness();V7_renderDashboard();}
+function V7_addBodyMetric(){const date=document.getElementById('v7-body-date').value||V7_today(),weightKg=document.getElementById('v7-body-weight').value,waistCm=document.getElementById('v7-body-waist').value,notes=document.getElementById('v7-body-notes').value.trim(),photoRef=document.getElementById('v7-body-photo').value.trim();if(weightKg===''&&waistCm==='')return App_toast('Enter weight or a measurement');if((weightKg!==''&&Number(weightKg)<=0)||(waistCm!==''&&Number(waistCm)<=0))return App_toast('Measurements must be greater than zero');AppState.fitness.bodyMetrics.push({id:V7_uuid('body'),date,weightKg:weightKg===''?'':Number(weightKg),waistCm:waistCm===''?'':Number(waistCm),notes,photoRef});V7_save();V7_renderFitness();App_toast('Measurement saved');}
+function V7_renderNutrition(){const host=document.getElementById('v7-nutrition-history');if(!host)return;host.innerHTML=AppState.fitness.nutrition.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8).map(n=>`<div class="v7-list-row"><div><strong>${escapeHtml(n.date)}</strong><small>${n.proteinGrams===null?'Protein not entered':escapeHtml(n.proteinGrams)+'g protein'} · ${n.waterLitres===null?'Water not entered':escapeHtml(n.waterLitres)+'L water'}${n.meal?' · '+escapeHtml(n.meal):''}</small></div></div>`).join('')||'<p class="v7-empty">No nutrition entries saved.</p>'; }
+function V7_addNutrition(){const date=V7_today(),proteinGrams=document.getElementById('v7-protein-grams').value,waterLitres=document.getElementById('v7-water-litres').value,meal=document.getElementById('v7-meal-note').value.trim();if(proteinGrams===''&&waterLitres===''&&!meal)return App_toast('Enter protein, water or a meal note');if((proteinGrams!==''&&Number(proteinGrams)<0)||(waterLitres!==''&&Number(waterLitres)<0))return App_toast('Nutrition values cannot be negative');AppState.fitness.nutrition.push({id:V7_uuid('nutrition'),date,proteinGrams:proteinGrams===''?null:Number(proteinGrams),waterLitres:waterLitres===''?null:Number(waterLitres),meal,createdAt:new Date().toISOString()});V7_save();V7_renderNutrition();App_toast('Nutrition entry saved');}
+function V7_renderPhone(){
+  const active=AppState.phone.activeFocus,el=document.getElementById('v7-focus-timer');if(el)el.textContent=active?V7_formatElapsed(Date.now()-new Date(active.startedAt).getTime()):'00:00:00';const btn=document.getElementById('v7-focus-toggle');if(btn)btn.textContent=active?'End phone-free session':'Start phone-free session';
+  const logs=(AppState.phone.screenLogs||[]).filter(x=>x.date===V7_today()),mins=logs.reduce((n,x)=>n+Number(x.minutes||0),0),legacy=Storage_loadDay(V7_today()).screenHours;document.getElementById('v7-phone-today').textContent=logs.length?`${(mins/60).toFixed(1)} manually recorded hours today`:legacy>0?`${legacy}h from the legacy daily tracker; source was not separately tagged`:'No phone-use data recorded today';
+  const sessions=(AppState.phone.sessions||[]).slice().sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt))).slice(0,10);document.getElementById('v7-focus-history').innerHTML=sessions.map(s=>`<div class="v7-list-row"><div><strong>${escapeHtml(s.label||'Phone-free focus')}</strong><small>${escapeHtml(s.date||'')}</small></div><span>${s.durationMinutes} min</span></div>`).join('')||'<p class="v7-empty">No focus sessions yet.</p>';
+  const triggers=AppState.phone.distractionLogs.slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,8);const triggerHost=document.getElementById('v7-distraction-history');if(triggerHost)triggerHost.innerHTML=triggers.map(t=>`<div class="v7-list-row"><div><strong>${escapeHtml(t.trigger)}</strong><small>${escapeHtml(t.date)} · ${escapeHtml(t.replacement||'No replacement entered')}</small></div></div>`).join('')||'<p class="v7-empty">No scrolling triggers recorded.</p>';
+  const rule=AppState.phone.rules;document.getElementById('v7-phone-cutoff').value=rule.eveningCutoff||AppState.profile.phoneCutoff||'21:30';document.getElementById('v7-social-limit').value=rule.socialMediaLimitMinutes??'';document.getElementById('v7-phone-target').value=AppState.profile.phoneTargetMinutes??'';const morning=document.getElementById('v7-phone-morning-rule'),outside=document.getElementById('v7-phone-study-rule'),blocklist=document.getElementById('v7-phone-blocklist');if(morning)morning.checked=!!rule.morningPhoneFree;if(outside)outside.checked=!!rule.phoneOutsideStudy;if(blocklist)blocklist.value=(rule.blocklist||[]).join('\n');
+  const day=Storage_loadDay(V7_today()),todayLog=logs[0];document.getElementById('v7-screen-hours').value=todayLog?String((Number(todayLog.minutes||0)/60).toFixed(1)):(day.screenHours>0?day.screenHours:'');
+}
+function V7_toggleFocus(){if(AppState.phone.activeFocus){const a=AppState.phone.activeFocus,end=Date.now(),elapsed=Math.max(1,Math.floor((end-new Date(a.startedAt).getTime())/60000));let mins=elapsed;if(elapsed>240){const corrected=prompt(`Focus timer elapsed ${elapsed} minutes. Enter actual phone-free minutes (1–240).`,'60');if(corrected===null)return;mins=Math.round(Number(corrected));if(!Number.isFinite(mins)||mins<1||mins>240)return App_toast('Enter actual focused minutes from 1 to 240');}AppState.phone.sessions.push({id:a.id,startedAt:a.startedAt,endedAt:new Date(end).toISOString(),date:a.date,durationMinutes:mins,label:a.label||'Phone-free focus'});AppState.phone.activeFocus=null;if(V7_focusInterval){clearInterval(V7_focusInterval);V7_focusInterval=null;}V7_save();App_toast(`Logged ${mins} phone-free minutes`);}else{AppState.phone.activeFocus={id:V7_uuid('focus'),startedAt:new Date().toISOString(),date:V7_today(),label:document.getElementById('v7-focus-label').value.trim()||'Phone-free focus'};V7_save();V7_focusInterval=setInterval(()=>{if(V7_systemTab==='phone')V7_renderPhone();},1000);App_toast('Focus started. Birtat cannot block other Android apps.');}V7_renderPhone();V7_renderDashboard();}
+function V7_logDistraction(){const trigger=document.getElementById('v7-distraction-trigger').value,detail=document.getElementById('v7-distraction-detail').value.trim(),replacement=document.getElementById('v7-distraction-replacement').value;if(!trigger)return App_toast('Choose a scrolling trigger');AppState.phone.distractionLogs.push({id:V7_uuid('trigger'),date:V7_today(),trigger,detail,replacement,createdAt:new Date().toISOString()});V7_save();document.getElementById('v7-distraction-detail').value='';V7_renderPhone();App_toast('Trigger recorded');}
+function V7_logScreenTime(){const raw=document.getElementById('v7-screen-hours').value;if(raw.trim()==='')return App_toast('Enter screen time, including 0 if appropriate');const hours=Number(raw);if(!Number.isFinite(hours)||hours<0||hours>24)return App_toast('Enter screen time from 0 to 24 hours');const date=V7_today(),minutes=Math.round(hours*60);AppState.phone.screenLogs=AppState.phone.screenLogs.filter(x=>x.date!==date);AppState.phone.screenLogs.push({id:V7_uuid('screen'),date,minutes,source:'manual',createdAt:new Date().toISOString()});Storage_saveDay(date,{screenHours:Math.round(hours)});V7_save();V7_renderPhone();V7_renderDashboard();App_toast('Manual screen-time entry saved');}
+function V7_savePhoneRules(){const cutoff=document.getElementById('v7-phone-cutoff').value||'21:30',limit=document.getElementById('v7-social-limit').value,target=document.getElementById('v7-phone-target').value;AppState.phone.rules.eveningCutoff=cutoff;AppState.phone.rules.socialMediaLimitMinutes=limit===''?null:Math.max(0,Number(limit));AppState.phone.rules.morningPhoneFree=document.getElementById('v7-phone-morning-rule').checked;AppState.phone.rules.phoneOutsideStudy=document.getElementById('v7-phone-study-rule').checked;AppState.phone.rules.blocklist=document.getElementById('v7-phone-blocklist').value.split('\n').map(x=>x.trim()).filter(Boolean);AppState.profile.phoneCutoff=cutoff;AppState.profile.phoneTargetMinutes=target===''?null:Math.max(0,Number(target));V7_save();App_toast('Phone rules saved');}
+function V7_renderPersonal(){
+  const readingSelect=document.getElementById('v7-reading-book');if(readingSelect){const previous=readingSelect.value;readingSelect.innerHTML='<option value="">General reading</option>'+AppState.personal.books.map(b=>`<option value="${b.id}">${escapeHtml(b.title)}</option>`).join('');if(AppState.personal.books.some(b=>b.id===previous))readingSelect.value=previous;}
+  document.getElementById('v7-book-list').innerHTML=AppState.personal.books.map(b=>`<div class="v7-list-row"><div><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.author||'Author not entered')} · ${escapeHtml(b.status||'reading')}${b.totalPages?` · ${b.currentPage||0}/${b.totalPages} pages`:''}</small></div><button class="v7-inline" onclick="V7_updateBook('${b.id}')">Update</button></div>`).join('')||'<p class="v7-empty">Add a book when you start reading.</p>';
+  document.getElementById('v7-goal-list').innerHTML=AppState.personal.goals.map(g=>`<div class="v7-list-row"><div><strong>${escapeHtml(g.title)}</strong><small>${escapeHtml(g.status||'active')}${g.deadline?' · due '+escapeHtml(g.deadline):''}</small>${g.nextAction?`<div class="v7-muted">Next: ${escapeHtml(g.nextAction)}</div>`:''}</div><button class="v7-inline" onclick="V7_updateGoal('${g.id}')">Update</button></div>`).join('')||'<p class="v7-empty">No future-skill goals yet.</p>';
+  document.getElementById('v7-family-list').innerHTML=AppState.personal.familyCommitments.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(f=>`<div class="v7-list-row"><div><strong>${escapeHtml(f.title)}</strong><small>${escapeHtml(f.date||'Flexible')} ${f.done?'· completed':''}</small></div><label class="v7-check"><input type="checkbox" ${f.done?'checked':''} onchange="V7_toggleFamily('${f.id}',this.checked)"><span>Done</span></label></div>`).join('')||'<p class="v7-empty">Add family time or important commitments when useful.</p>';
+  document.getElementById('v7-reading-history').innerHTML=AppState.personal.readingSessions.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8).map(r=>`<div class="v7-list-row"><div><strong>${escapeHtml(r.bookTitle||'Reading')}</strong><small>${escapeHtml(r.date)} · ${r.minutes} min${r.pages?` · page ${r.pages}`:''}</small>${r.note?`<div class="v7-muted">${escapeHtml(r.note)}</div>`:''}</div></div>`).join('')||'<p class="v7-empty">Reading sessions appear here.</p>';
+}
+function V7_addBook(){const title=document.getElementById('v7-book-title').value.trim(),author=document.getElementById('v7-book-author').value.trim(),totalPages=Number(document.getElementById('v7-book-pages').value)||0;if(!title)return App_toast('Enter a book title');AppState.personal.books.push({id:V7_uuid('book'),title,author,totalPages,currentPage:0,status:'reading',notes:'',createdAt:new Date().toISOString()});V7_save();V7_renderPersonal();}
+function V7_updateBook(id){const b=AppState.personal.books.find(x=>x.id===id);if(!b)return;const page=prompt('Current page',String(b.currentPage||0));if(page===null)return;const status=prompt('Status: reading, paused, finished',b.status||'reading');if(status===null)return;b.currentPage=Math.max(0,Number(page)||0);b.status=status;b.updatedAt=new Date().toISOString();V7_save();V7_renderPersonal();}
+function V7_logReading(){const bookId=document.getElementById('v7-reading-book').value,minutes=Math.max(0,Math.round(Number(document.getElementById('v7-reading-minutes').value)||0)),pages=document.getElementById('v7-reading-pages').value,note=document.getElementById('v7-reading-note').value.trim();if(minutes<1)return App_toast('Enter reading minutes');const b=AppState.personal.books.find(x=>x.id===bookId);AppState.personal.readingSessions.push({id:V7_uuid('reading'),date:V7_today(),bookId:bookId||'',bookTitle:b?.title||'General reading',minutes,pages:pages===''?'':Number(pages),note,createdAt:new Date().toISOString()});if(b&&pages!=='')b.currentPage=Math.max(b.currentPage||0,Number(pages)||0);V7_save();V7_renderPersonal();App_toast('Reading session saved');}
+function V7_addGoal(){const title=document.getElementById('v7-goal-title').value.trim(),nextAction=document.getElementById('v7-goal-next').value.trim(),deadline=document.getElementById('v7-goal-deadline').value;if(!title)return App_toast('Enter a goal outcome');AppState.personal.goals.push({id:V7_uuid('goal'),title,nextAction,deadline,status:'active',createdAt:new Date().toISOString()});V7_save();V7_renderPersonal();}
+function V7_updateGoal(id){const g=AppState.personal.goals.find(x=>x.id===id);if(!g)return;const next=prompt('Next action',g.nextAction||'');if(next===null)return;const status=prompt('Status: active, paused, completed',g.status||'active');if(status===null)return;g.nextAction=next;g.status=status;V7_save();V7_renderPersonal();}
+function V7_addFamily(){const title=document.getElementById('v7-family-title').value.trim(),date=document.getElementById('v7-family-date').value;if(!title)return App_toast('Enter a commitment');AppState.personal.familyCommitments.push({id:V7_uuid('family'),title,date,done:false});V7_save();V7_renderPersonal();}
+function V7_toggleFamily(id,done){const f=AppState.personal.familyCommitments.find(x=>x.id===id);if(f){f.done=!!done;V7_save();V7_renderPersonal();}}
+function V7_renderSettings(){const p=AppState.profile;const backupButton=document.getElementById('v7-prebackup-btn');if(backupButton)backupButton.hidden=!localStorage.getItem('birtat-v4-pre-v7-backup');document.getElementById('v7-setting-review-day').value=String(p.weeklyReviewDay??0);document.getElementById('v7-setting-name').value=p.name||'Dagim';document.getElementById('v7-setting-wake').value=p.wakeTime||'06:00';document.getElementById('v7-setting-bed').value=p.bedtime||'22:00';document.getElementById('v7-setting-study').value=p.studyTargetMinutes??180;document.getElementById('v7-setting-gym').value=p.gymTarget??4;document.getElementById('v7-setting-phone').value=p.phoneTargetMinutes??'';document.getElementById('v7-setting-cutoff').value=p.phoneCutoff||'21:30';document.getElementById('v7-setting-zone').value=p.timeZone||'local';}
+function V7_downloadPreMigrationBackup(){const raw=localStorage.getItem('birtat-v4-pre-v7-backup');if(!raw)return App_toast('No pre-V7 snapshot is available on this device');const blob=new Blob([raw],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='birtat-pre-v7-backup.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function V7_saveSettings(){const p=AppState.profile;p.name=document.getElementById('v7-setting-name').value.trim()||'Dagim';p.wakeTime=document.getElementById('v7-setting-wake').value||'06:00';p.bedtime=document.getElementById('v7-setting-bed').value||'22:00';p.studyTargetMinutes=Math.max(0,Number(document.getElementById('v7-setting-study').value)||0);p.gymTarget=Math.max(0,Number(document.getElementById('v7-setting-gym').value)||0);const phone=document.getElementById('v7-setting-phone').value;p.phoneTargetMinutes=phone===''?null:Math.max(0,Number(phone));p.phoneCutoff=document.getElementById('v7-setting-cutoff').value||'21:30';const requestedZone=document.getElementById('v7-setting-zone').value.trim()||Intl.DateTimeFormat().resolvedOptions().timeZone;try{new Intl.DateTimeFormat('en-US',{timeZone:requestedZone}).format(new Date());p.timeZone=requestedZone;}catch(e){p.timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone;document.getElementById('v7-setting-zone').value=p.timeZone;return App_toast('Invalid time zone. Device time zone restored.');}p.weeklyReviewDay=clamp(Number(document.getElementById('v7-setting-review-day').value)||0,0,6);AppState.phone.rules.eveningCutoff=p.phoneCutoff;Today_viewDate=Utils_today();const zoneToday=V7_parseDate(V7_today());Cal_year=zoneToday.getFullYear();Cal_month=zoneToday.getMonth();V7_save();V7_renderDashboard();App_toast('Personal settings saved');}
+function V7_renderDashboard(){
+  const root=document.getElementById('v7-dashboard');if(!root)return;const heroName=document.querySelector('.hero-name');if(heroName)heroName.textContent=(AppState.profile.name||'Dagim')+' ✦';const date=V7_today(),events=V7_getEvents(date),day=Storage_loadDay(date),faith=V7_getFaith(date),mins=(AppState.academic.sessions||[]).filter(s=>s.date===date).reduce((n,s)=>n+Number(s.durationMinutes||0),0),start=V7_currentWeek(),end=V7_parseDate(start);end.setDate(end.getDate()+6);const endKey=Utils_dateKey(end),weekWorkouts=AppState.fitness.workouts.filter(w=>w.date>=start&&w.date<=endKey&&w.status==='completed'),todayScreen=AppState.phone.screenLogs.filter(x=>x.date===date).reduce((n,x)=>n+Number(x.minutes||0),0),legacyScreen=Number(day.screenHours||0),target=Number(AppState.profile.studyTargetMinutes??180),doneAssignments=AppState.academic.courses.flatMap(c=>c.assignments||[]).filter(a=>a.done).length,openAssignments=AppState.academic.courses.flatMap(c=>c.assignments||[]).filter(a=>!a.done).length;
+  const priorityHtml=[['✝️','Faith',Object.values(faith).filter(Boolean).length+' commitments recorded'],['🎓','Academics',`${Math.floor(mins/60)}h ${mins%60}m / ${Math.floor(target/60)}h focused study`],['🏋️','Physique',`${weekWorkouts.length} / ${AppState.profile.gymTarget} workouts this week`],['👪','Family & future',`${AppState.personal.readingSessions.filter(r=>r.date===date).length} reading sessions · ${AppState.personal.familyCommitments.filter(f=>f.date===date&&!f.done).length} family commitments today`]];
+  document.getElementById('v7-priorities').innerHTML=priorityHtml.map(([icon,name,summary])=>`<div class="v7-priority"><span>${icon}</span><div><strong>${name}</strong><small>${escapeHtml(summary)}</small></div></div>`).join('');
+  document.getElementById('v7-plan-advice').textContent=(events.length>=5?'Heavy schedule: protect essential faith practice, meals, sleep and recovery. Move low-priority work rather than pushing everything late.':'Keep the next action clear and leave some unallocated time for recovery or unexpected changes.')+` Sleep target: ${AppState.profile.bedtime||'22:00'} · wake ${AppState.profile.wakeTime||'06:00'}.`;
+  document.getElementById('v7-dashboard-agenda').innerHTML=events.length?events.slice(0,5).map(e=>`<div class="v7-list-row"><div><strong>${escapeHtml(e.title)}</strong><small>${escapeHtml(e.startTime)}–${escapeHtml(e.endTime)} · ${escapeHtml(e.location||e.kind||'')}</small></div><button class="v7-inline" onclick="App_nav('systems');V7_openSystemTab('timetable')">Open</button></div>`).join('')+(events.length>5?`<p class="v7-muted">${events.length-5} more scheduled commitments. Open the agenda to see all.</p>`:''):'<p class="v7-empty">No scheduled classes or blocks today. Keep room for recovery.</p>';
+  const hasMorning=events.some(e=>V7_timeMinutes(e.startTime)<12*60),hasAfternoon=events.some(e=>V7_timeMinutes(e.startTime)>=12*60);document.getElementById('v7-day-mode').textContent=hasMorning?'Morning-class day':hasAfternoon?'Afternoon-class day':'Free or lighter day';
+  const next=events.find(e=>V7_timeMinutes(e.endTime)>V7_timeMinutes(V7_nowTime()));document.getElementById('v7-next-task').textContent=next?`${next.title} · ${next.startTime}–${next.endTime}`:'No upcoming scheduled event';
+  document.getElementById('v7-study-progress').textContent=`${mins} / ${target} focused minutes`;document.getElementById('v7-study-progress-bar').style.width=Math.min(100,mins/Math.max(1,target)*100)+'%';document.getElementById('v7-gym-progress').textContent=`${weekWorkouts.length} / ${AppState.profile.gymTarget} sessions`;document.getElementById('v7-phone-progress').textContent=todayScreen?`${(todayScreen/60).toFixed(1)} h manually logged`:legacyScreen?`${legacyScreen} h legacy tracker entry`:'Not recorded';document.getElementById('v7-task-progress').textContent=`${doneAssignments} completed · ${openAssignments} open academic tasks`;
+  const review=AppState.dailyReviews[date],weeklyDay=Number(AppState.profile.weeklyReviewDay??0);document.getElementById('v7-review-status').textContent=review?.savedAt?'Evening review saved':V7_parseDate(date).getDay()===weeklyDay?'Evening review not recorded · weekly review due today':'Evening review not recorded';
+}
+function V7_saveDailyReview(){const date=V7_today();AppState.dailyReviews[date]={faith:document.getElementById('v7-review-faith').value,study:document.getElementById('v7-review-study').value,physique:document.getElementById('v7-review-physique').value,phone:document.getElementById('v7-review-phone').value,accomplishment:document.getElementById('v7-review-win').value,obstacle:document.getElementById('v7-review-obstacle').value,adjustment:document.getElementById('v7-review-adjustment').value,savedAt:new Date().toISOString()};V7_save();V7_renderDashboard();App_toast('Evening review saved');}
+function V7_renderDailyReview(){const r=AppState.dailyReviews[V7_today()]||{};[['faith','v7-review-faith'],['study','v7-review-study'],['physique','v7-review-physique'],['phone','v7-review-phone'],['accomplishment','v7-review-win'],['obstacle','v7-review-obstacle'],['adjustment','v7-review-adjustment']].forEach(([k,id])=>{const e=document.getElementById(id);if(e)e.value=r[k]||'';});}
+function V7_renderWeeklyReview(){const start=V7_currentWeek(),key=start;const end=V7_parseDate(start);end.setDate(end.getDate()+6);const endKey=Utils_dateKey(end),sessions=AppState.academic.sessions.filter(s=>s.date>=start&&s.date<=endKey),mins=sessions.reduce((n,s)=>n+Number(s.durationMinutes||0),0),workouts=AppState.fitness.workouts.filter(w=>w.date>=start&&w.date<=endKey&&w.status==='completed').length,phone=AppState.phone.screenLogs.filter(x=>x.date>=start&&x.date<=endKey),phoneMins=phone.reduce((n,x)=>n+Number(x.minutes||0),0),reading=AppState.personal.readingSessions.filter(r=>r.date>=start&&r.date<=endKey).reduce((n,r)=>n+Number(r.minutes||0),0),faithDays=Object.entries(AppState.faith.logs).filter(([d,l])=>d>=start&&d<=endKey&&Object.values(l||{}).some(Boolean)).length,assignments=AppState.academic.courses.flatMap(c=>c.assignments||[]).filter(a=>a.completedAt&&a.completedAt.slice(0,10)>=start&&a.completedAt.slice(0,10)<=endKey).length,family=AppState.personal.familyCommitments.filter(f=>f.date>=start&&f.date<=endKey&&f.done).length,sleepRecords=Object.entries(AppState.days).filter(([d,r])=>d>=start&&d<=endKey&&Number(r.sleepHours)>0),sleepAvg=sleepRecords.length?sleepRecords.reduce((n,[d,r])=>n+Number(r.sleepHours),0)/sleepRecords.length:null,reviews=AppState.weeklyReviews[key]||{};
+  const zoneToday=V7_parseDate(V7_today()),monthStart=Utils_dateKey(new Date(zoneToday.getFullYear(),zoneToday.getMonth(),1,12)),monthStudy=AppState.academic.sessions.filter(s=>s.date>=monthStart&&s.date<=V7_today()).reduce((n,s)=>n+Number(s.durationMinutes||0),0),monthGym=AppState.fitness.workouts.filter(w=>w.date>=monthStart&&w.date<=V7_today()&&w.status==='completed').length,monthRead=AppState.personal.readingSessions.filter(r=>r.date>=monthStart&&r.date<=V7_today()).reduce((n,r)=>n+Number(r.minutes||0),0);
+  document.getElementById('v7-weekly-evidence').innerHTML=`<div class="v7-metric-grid"><div><strong>${(mins/60).toFixed(1)}h</strong><small>Independent study</small></div><div><strong>${workouts}/${AppState.profile.gymTarget}</strong><small>Gym sessions</small></div><div><strong>${phone.length?(phoneMins/60).toFixed(1)+'h':'—'}</strong><small>Manual screen time</small></div><div><strong>${reading}m</strong><small>Reading</small></div><div><strong>${faithDays}/7</strong><small>Days with faith records</small></div><div><strong>${assignments}</strong><small>Academic tasks completed</small></div><div><strong>${family}</strong><small>Family commitments done</small></div><div><strong>${sleepAvg===null?'—':sleepAvg.toFixed(1)+'h'}</strong><small>Average recorded sleep</small></div></div><p class="v7-muted">Month to date (${monthStart} to ${V7_today()}): ${(monthStudy/60).toFixed(1)}h study · ${monthGym} gym sessions · ${monthRead}m reading.</p><p class="v7-muted">Data window: ${start} to ${endKey}. Phone-use totals are manual entries only. Sleep and screen time are shown as missing when not entered. Faith count means days with a record, not a rating of faith.</p>`;
+  document.getElementById('v7-weekly-priority').value=reviews.priority||'';document.getElementById('v7-weekly-notes').value=reviews.notes||'';document.getElementById('v7-weekly-course').value=reviews.courseFocus||'';document.getElementById('v7-weekly-status').textContent=`Review day: ${V7_dayName(Number(AppState.profile.weeklyReviewDay??0))} · ${reviews.savedAt?'Review saved':'Review not saved'}`;
+}
+function V7_saveWeeklyReview(){const key=V7_currentWeek();AppState.weeklyReviews[key]={priority:document.getElementById('v7-weekly-priority').value,notes:document.getElementById('v7-weekly-notes').value,courseFocus:document.getElementById('v7-weekly-course').value,savedAt:new Date().toISOString()};V7_save();V7_renderWeeklyReview();App_toast('Weekly review saved');}
+function V7_addQuickTask(){const title=prompt('What is the next concrete task?');if(!title||!title.trim())return;AppState.tasks.push({id:V7_uuid('task'),title:title.trim(),date:V7_today(),priority:'normal',status:'open',done:false,createdAt:new Date().toISOString()});V7_save();V7_renderDashboard();App_toast('Task added');}
+function V7_initInputs(){['v7-agenda-date','v7-class-date','v7-block-date','v7-workout-date','v7-body-date'].forEach(id=>{const e=document.getElementById(id);if(e&&!e.value)e.value=V7_today();});const s=document.getElementById('v7-reading-book');if(s)s.innerHTML='<option value="">General reading</option>'+AppState.personal.books.map(b=>`<option value="${b.id}">${escapeHtml(b.title)}</option>`).join('');const r=document.getElementById('v7-resource-course');if(r)r.innerHTML=AppState.academic.courses.map(c=>`<option value="${c.id}">${escapeHtml(c.short)}</option>`).join('');V7_renderDailyReview();V7_renderWeeklyReview();V7_renderDashboard();}
+
+function V7_habitScheduled(h,date){const d=V7_parseDate(date),dow=d.getDay();if(date<(h.startDate||'0000-01-01')||(h.endDate&&date>h.endDate))return false;if(h.retiredAt&&date>=h.retiredAt)return false;if(h.retired&&!h.retiredAt)return false;if((h.pausePeriods||[]).some(p=>date>=p.start&&(!p.end||date<p.end)))return false;if(h.paused&&!(h.pausePeriods||[]).length)return false;if(h.frequency==='daily')return true;if(h.frequency==='weekly')return false;return (h.weekdays||[]).includes(dow);}
+function V7_habitStreak(h){if(h.frequency==='weekly')return null;let streak=0,cursor=V7_parseDate(V7_today());if(V7_habitScheduled(h,V7_today())&&V7_habitStatus(h.id,V7_today())==='unrecorded')cursor.setDate(cursor.getDate()-1);const start=V7_parseDate(h.startDate||V7_today());for(let d=new Date(cursor);d>=start;d.setDate(d.getDate()-1)){const key=Utils_dateKey(d);if(!V7_habitScheduled(h,key))continue;const status=V7_habitStatus(h.id,key);if(status==='done')streak++;else break;}return streak;}
+function V7_habitStatus(h,date=V7_today()){const id=typeof h==='string'?h:h?.id;return id?AppState.habitLogs?.[date]?.[id]||'unrecorded':'unrecorded';}
+function V7_setBuiltInHabit(id){const date=V7_today(),rec=Storage_loadDay(date),habits={...rec.habits,[id]:!rec.habits[id]};Storage_saveDay(date,{habits});V7_renderHabits();V7_renderDashboard();}
+function V7_setHabitStatus(id,status){const date=V7_today();AppState.habitLogs=AppState.habitLogs||{};AppState.habitLogs[date]=AppState.habitLogs[date]||{};AppState.habitLogs[date][id]=status;V7_save();V7_renderHabits();V7_renderDashboard();}
+function V7_addHabit(){const name=document.getElementById('v7-habit-name').value.trim();if(!name)return App_toast('Enter a habit name');const frequency=document.getElementById('v7-habit-frequency').value,target=clamp(Number(document.getElementById('v7-habit-target').value)||1,1,7),weekdays=[...document.querySelectorAll('#v7-habit-weekdays input:checked')].map(x=>Number(x.value)),startDate=document.getElementById('v7-habit-start').value||V7_today(),endDate=document.getElementById('v7-habit-end').value||'';if(frequency==='custom'&&!weekdays.length)return App_toast('Choose at least one weekday');if(endDate&&endDate<startDate)return App_toast('End date must be after start date');AppState.customHabits.push({id:V7_uuid('habit'),name,category:document.getElementById('v7-habit-category').value,frequency,target,weekdays:frequency==='custom'?weekdays:[],startDate,endDate,paused:false,retired:false,createdAt:new Date().toISOString()});document.getElementById('v7-habit-name').value='';V7_save();V7_renderHabits();App_toast('Habit created');}
+function V7_renderHabits(){const today=V7_today(),builtins=HABITS.map(h=>({id:h.id,name:HABIT_META[h.id]?.label||h.id,category:PILLARS[h.pillar]?.label||'Existing',builtin:true}));const custom=(AppState.customHabits||[]).filter(h=>!h.retired);const list=document.getElementById('v7-habit-today');if(!list)return;const html=[];for(const h of builtins){const rec=Storage_loadDay(today),done=!!rec.habits[h.id];html.push(`<div class="v7-habit-row"><div><strong>${escapeHtml(h.name)}</strong><small>Existing habit · ${escapeHtml(h.category)}</small></div><span class="v7-status ${done?'done':'unrecorded'}">${done?'Done':'Not marked'}</span><button class="v7-inline" onclick="V7_setBuiltInHabit('${h.id}')">${done?'Undo':'Complete'}</button></div>`);}for(const h of custom){const scheduled=V7_habitScheduled(h,today),weeklyGoal=h.frequency==='weekly',available=scheduled||weeklyGoal,status=V7_habitStatus(h.id,today);html.push(`<div class="v7-habit-row ${!available?'is-unscheduled':''}"><div><strong>${escapeHtml(h.name)}</strong><small>${escapeHtml(h.category)} · ${weeklyGoal?`Weekly target: ${h.target} times`:(scheduled?'Scheduled today':'Not scheduled today')}</small></div>${available?`<select class="finput v7-status-select" value="${status}" onchange="V7_setHabitStatus('${h.id}',this.value)"><option value="unrecorded" ${status==='unrecorded'?'selected':''}>Unrecorded</option><option value="done" ${status==='done'?'selected':''}>Done</option><option value="missed" ${status==='missed'?'selected':''}>Missed</option></select>`:`<span class="v7-status">Unscheduled</span>`}<button class="v7-inline" onclick="V7_editHabit('${h.id}')">Edit</button></div>`);}list.innerHTML=html.join('')||'<p class="v7-empty">No habits found.</p>';
+  const history=document.getElementById('v7-habit-history');history.innerHTML=custom.map(h=>{let scheduled=0,done=0,missed=0;const end=V7_parseDate(today),start=V7_parseDate(h.startDate||today);for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){const k=Utils_dateKey(d);if(V7_habitScheduled(h,k)){scheduled++;const st=V7_habitStatus(h.id,k);if(st==='done')done++;if(st==='missed')missed++;}}const weeklyDone=Object.entries(AppState.habitLogs||{}).filter(([date,logs])=>date>=V7_currentWeek()&&date<=today&&logs[h.id]==='done').length,allDone=Object.entries(AppState.habitLogs||{}).filter(([date,logs])=>date>=h.startDate&&date<=today&&logs[h.id]==='done').length,streak=V7_habitStreak(h);const rate=h.frequency==='weekly'?Math.min(100,Math.round(weeklyDone/Math.max(1,h.target)*100)):(scheduled?Math.round(done/scheduled*100):0);return `<div class="v7-habit-history-row"><div><strong>${escapeHtml(h.name)}</strong><small>${h.frequency==='weekly'?`${weeklyDone}/${h.target} this week · ${allDone} total done`:`${done} done · ${missed} missed · ${Math.max(0,scheduled-done-missed)} unrecorded scheduled occurrences · ${streak} current streak`}</small></div><div class="v7-rate"><span>${rate}%</span><div class="pbar"><div class="pfill" style="width:${rate}%"></div></div></div><button class="v7-inline" onclick="V7_editHabit('${h.id}')">Manage</button></div>`;}).join('')||'<p class="v7-empty">Create a custom habit to start tracking scheduled occurrences separately from missed and unrecorded days.</p>';
+}
+function V7_editHabit(id){const h=AppState.customHabits.find(x=>x.id===id);if(!h)return;const action=prompt('Type: pause, resume, retire, rename',h.paused?'resume':'pause');if(!action)return;const a=action.trim().toLowerCase();if(a==='pause'){h.pausePeriods=h.pausePeriods||[];if(!h.paused){h.pausePeriods.push({start:V7_today(),end:null});h.paused=true;}}else if(a==='resume'){if(h.paused){const open=(h.pausePeriods||[]).slice().reverse().find(p=>!p.end);if(open)open.end=V7_today();}h.paused=false;}else if(a==='retire'){if(!confirm('Retire this habit and keep its history?'))return;h.retired=true;h.retiredAt=V7_today();}else if(a==='rename'){const n=prompt('New habit name',h.name);if(n===null)return;if(n.trim())h.name=n.trim();}else if(a==='schedule'){const frequency=prompt('Frequency: daily, weekly, custom',h.frequency||'daily');if(frequency===null)return;if(!['daily','weekly','custom'].includes(frequency))return App_toast('Use daily, weekly or custom');h.frequency=frequency;if(frequency==='weekly'){const t=prompt('Target occurrences per week',String(h.target||3));if(t===null)return;h.target=clamp(Number(t)||1,1,7);}if(frequency==='custom'){const days=prompt('Weekdays as numbers: Sun=0, Mon=1, ... Sat=6', (h.weekdays||[]).join(','));if(days===null)return;h.weekdays=days.split(',').map(x=>Number(x.trim())).filter(x=>Number.isInteger(x)&&x>=0&&x<=6);if(!h.weekdays.length)return App_toast('Choose at least one valid weekday');}const st=prompt('Start date YYYY-MM-DD',h.startDate||V7_today());if(st===null)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(st))return App_toast('Use YYYY-MM-DD');h.startDate=st;const en=prompt('End date YYYY-MM-DD, or blank for none',h.endDate||'');if(en===null)return;if(en&&(!/^\d{4}-\d{2}-\d{2}$/.test(en)||en<st))return App_toast('Enter a valid end date');h.endDate=en;}else return App_toast('Use pause, resume, retire, rename or schedule');V7_save();V7_renderHabits();}
+function V7_renderSystemsReview(){V7_renderDailyReview();V7_renderWeeklyReview();}
+
+
 /* ─── Startup ────────────────────────────────────────────────────────────── */
 
 document.addEventListener('DOMContentLoaded', () => {
   Storage_load();
-  App_handleDeepLink();
+  V7_migrateState();
+  Today_viewDate=Utils_today();const zoneToday=V7_parseDate(V7_today());Cal_year=zoneToday.getFullYear();Cal_month=zoneToday.getMonth();
+  V7_initInputs();
+  if(AppState.academic.activeSession) V7_timerInterval=setInterval(()=>{if(V7_systemTab==='academics')V7_renderAcademics();},1000);
+  if(AppState.phone.activeFocus) V7_focusInterval=setInterval(()=>{if(V7_systemTab==='phone')V7_renderPhone();},1000);
   App_registerRipple();
   App_registerKeyboard();
   App_registerReviewAutoSave();
   App_registerPWA();
   App_nav('home');
+  App_handleDeepLink();
 });
