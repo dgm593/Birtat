@@ -20,55 +20,21 @@
      HOME
 ══════════════════════════════════════════════════ -->
 <main id="pg-home" class="page active" role="main" aria-label="Home dashboard">
-  <div class="home-hero">
+  <div class="home-hero home-hero-simple">
     <div class="hero-greeting" id="h-greeting-label" aria-live="polite">Good morning,</div>
     <h1 class="hero-name">Dagim ✦</h1>
     <div class="hero-sub" id="h-date-label"></div>
 
-    <!-- Hero card: score ring + semester status -->
-    <div class="hero-card" role="region" aria-label="Today's score and semester progress">
-      <div class="score-ring-wrap" aria-label="Daily score ring">
-        <svg width="130" height="130" viewBox="0 0 130 130" aria-hidden="true">
-          <circle cx="65" cy="65" r="56" fill="none" stroke="#1e1e1e" stroke-width="9"/>
-          <circle cx="65" cy="65" r="56" fill="none" id="h-ring-fill"
-            stroke="#D4AF37" stroke-width="9" stroke-linecap="round"
-            stroke-dasharray="351.86" stroke-dashoffset="351.86"
-            style="transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1),stroke 0.4s ease;"/>
-        </svg>
-        <div class="score-ring-center">
-          <div class="score-num t-gold" id="h-score-num" aria-label="Today's score">0</div>
-          <div class="score-lbl">Today /100</div>
-        </div>
-      </div>
-      <div class="hero-info">
-        <div class="hero-day-label" id="h-sem-label">Semester</div>
-        <div class="hero-day-num" id="h-day-num" aria-label="Current semester week">—</div>
-        <div class="hero-day-sub" id="h-sem-sub">2026/27 · Semester 1</div>
-        <div class="pbar" style="margin-bottom:8px;" role="progressbar" aria-label="Semester progress" aria-valuemin="0" aria-valuemax="100">
-          <div class="pfill" id="h-summer-bar" style="width:0%"></div>
-        </div>
-        <div class="t-sub" style="font-size:12px;"><span id="h-days-left">—</span></div>
-      </div>
-    </div>
   </div>
 
-  <!-- Smart stats -->
-  <div class="sh"><span class="t-label">Progress at a Glance</span></div>
-  <div class="smart-stats" role="region" aria-label="Progress statistics">
-    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🔥</div><div class="sstat-val" id="ss-streak">0</div><div class="sstat-lbl">Streak</div></div>
-    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🏆</div><div class="sstat-val" id="ss-longest">0</div><div class="sstat-lbl">Best</div></div>
-    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🙏</div><div class="sstat-val" id="ss-prayer">0%</div><div class="sstat-lbl">Prayer</div></div>
-    <div class="sstat"><div class="sstat-icon" aria-hidden="true">🏋️</div><div class="sstat-val" id="ss-workout">0</div><div class="sstat-lbl">Workouts</div></div>
-    <div class="sstat"><div class="sstat-icon" aria-hidden="true">📚</div><div class="sstat-val" id="ss-reading">0</div><div class="sstat-lbl">Reading</div></div>
-    <div class="sstat"><div class="sstat-icon" aria-hidden="true">💻</div><div class="sstat-val" id="ss-gpafy">0</div><div class="sstat-lbl">GPAfy</div></div>
-  </div>
-
-  <!-- Birtat 7.0 command center -->
+  <!-- Today's simple command center -->
   <section id="v7-dashboard" aria-label="Today's command center">
     <div class="sh"><span class="t-label">Today's execution</span><span class="sh-r" id="v7-review-status">Evening review not recorded</span></div>
-    <div class="v7-card v7-home-card"><div class="v7-section-title"><span>Four priorities</span><small>Faith first, then execution</small></div><div id="v7-priorities" class="v7-priorities"></div></div>
-    <div class="v7-card v7-home-card"><div class="v7-section-title"><span>Next commitment</span><button class="v7-inline" onclick="App_nav('systems');V7_openSystemTab('timetable')">Open agenda →</button></div><small id="v7-day-mode" class="v7-muted">Day type based on scheduled events</small><strong id="v7-next-task" class="v7-next-task">No upcoming scheduled event</strong><p id="v7-plan-advice" class="v7-muted"></p><div id="v7-dashboard-agenda"></div></div>
-    <div class="v7-card v7-home-card"><div class="v7-section-title"><span>Evidence, not guesses</span><small>Missing data stays missing</small></div>
+    <div class="v7-card v7-home-card"><div class="v7-section-title"><span>Today's priorities</span><small>Faith first, then execution</small></div><div id="v7-priorities" class="v7-priorities"></div></div>
+    <div class="v7-card v7-home-card v7-today-schedule-card"><div class="v7-section-title"><span>📚 Today's classes</span><button class="v7-inline" onclick="App_nav('systems');V7_openSystemTab('timetable')">Full timetable →</button></div><div id="v7-home-classes" class="v7-home-events"><p class="v7-empty">Loading today's classes…</p></div></div>
+    <div class="v7-card v7-home-card v7-gym-card"><div class="v7-section-title"><span>🏋️ Today's training</span><button class="v7-inline" onclick="App_nav('systems');V7_openSystemTab('fitness')">Workout plan →</button></div><div id="v7-home-gym" class="v7-home-gym-content"><strong>Checking your plan…</strong></div></div>
+    <div class="v7-card v7-home-card v7-next-card"><div class="v7-section-title"><span>Next commitment</span><small id="v7-day-mode">Today's plan</small></div><strong id="v7-next-task" class="v7-next-task">No upcoming scheduled event</strong><p id="v7-plan-advice" class="v7-muted"></p></div>
+    <div class="v7-card v7-home-card"><div class="v7-section-title"><span>Weekly progress</span><small>Based on your records</small></div>
       <div class="v7-progress-row"><span>Independent study</span><strong id="v7-study-progress">0 / 180 focused minutes</strong></div><div class="pbar"><div id="v7-study-progress-bar" class="pfill" style="width:0%"></div></div>
       <div class="v7-progress-row"><span>Gym this week</span><strong id="v7-gym-progress">0 / 4 sessions</strong></div>
       <div class="v7-progress-row"><span>Phone use</span><strong id="v7-phone-progress">Not recorded</strong></div>
@@ -77,31 +43,6 @@
     <div class="v7-actions v7-home-actions"><button class="btn btn-gold" onclick="App_nav('systems');V7_openSystemTab('academics')">Start study</button><button class="btn btn-out" onclick="App_nav('systems');V7_openSystemTab('fitness')">Log workout</button><button class="btn btn-out" onclick="App_nav('systems');V7_openSystemTab('phone')">Phone-free focus</button><button class="btn btn-out" onclick="App_nav('systems');V7_openSystemTab('reviews')">Evening review</button></div>
   </section>
 
-  <!-- Six Pillars -->
-  <div class="sh"><span class="t-label">Six Growth Pillars</span><span class="sh-r rip" onclick="App_nav('today')" role="button" tabindex="0" aria-label="Go to today's tracker">Track →</span></div>
-  <div class="pillar-row" id="h-pillars" role="region" aria-label="Growth pillars"></div>
-
-  <!-- Today's Focus -->
-  <div class="sh"><span class="t-label">Today's Focus</span><span class="sh-r rip" onclick="App_nav('today')" role="button" tabindex="0" aria-label="Open today's tracker">Open →</span></div>
-  <div class="card"><div id="h-focus" style="padding:4px 0;" aria-live="polite"></div></div>
-
-  <!-- Quick actions -->
-  <div style="display:flex;gap:9px;padding:0 14px 16px;flex-wrap:wrap;" role="group" aria-label="Quick actions">
-    <button class="btn btn-gold rip" onclick="App_nav('today')" aria-label="Open today's tracker">☀️ Today's Tracker</button>
-    <button class="btn btn-out  rip" onclick="App_nav('calendar')" aria-label="Open calendar">📅 Calendar</button>
-    <button class="btn btn-out  rip" onclick="App_nav('review')" aria-label="Open weekly review">📊 Review</button>
-  </div>
-
-  <!-- Score legend -->
-  <div class="sh"><span class="t-label">Score System</span></div>
-  <div class="card">
-    <div class="card-p" style="display:flex;flex-direction:column;gap:10px;" role="list" aria-label="Score colour guide">
-      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--green)" aria-hidden="true"></span><span class="t-sub">90–100 · 🟢 Excellent day</span></div>
-      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--blue)"  aria-hidden="true"></span><span class="t-sub">75–89 · 🔵 Strong day</span></div>
-      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--yellow)" aria-hidden="true"></span><span class="t-sub">60–74 · 🟡 Average day</span></div>
-      <div class="legend-row" role="listitem"><span class="leg-dot" style="background:var(--red)"   aria-hidden="true"></span><span class="t-sub">Below 60 · 🔴 Needs improvement</span></div>
-    </div>
-  </div>
 </main>
 
 
@@ -437,14 +378,15 @@
   <div class="sh"><span class="t-label">Habit Rates</span></div>
   <div class="card"><div id="profile-habit-bars" style="padding:8px 0;" role="region" aria-label="Habit completion rates"></div></div>
 
-  <!-- Memory Timeline -->
-  <div class="sh"><span class="t-label">📖 Memory Timeline</span></div>
-  <div class="card" style="margin-bottom:8px;">
-    <div style="padding:12px 16px;">
-      <input id="mem-search" class="finput" type="search" placeholder="🔍 Search memories…" oninput="filterMemories(this.value)" aria-label="Search memory timeline"/>
+  <!-- Memory Timeline: one archive folder, grouped by month and individual day -->
+  <div class="sh"><span class="t-label">📖 Memory Archive</span></div>
+  <details class="mem-archive-folder" open>
+    <summary><span class="mem-folder-icon">📁</span><span><strong>My memories</strong><small>Every day's memory stays filed by month</small></span><span class="mem-folder-chevron">⌄</span></summary>
+    <div class="mem-archive-body">
+      <input id="mem-search" class="finput" type="search" placeholder="🔍 Search memories…" oninput="filterMemories(this.value)" aria-label="Search memory archive"/>
+      <div id="mem-timeline" role="feed" aria-label="Memory archive grouped by month" aria-live="polite"></div>
     </div>
-  </div>
-  <div id="mem-timeline" style="margin-bottom:8px;" role="feed" aria-label="Memory timeline entries" aria-live="polite"></div>
+  </details>
 
   <!-- Settings -->
   <div class="sh"><span class="t-label">Settings</span></div>
@@ -463,7 +405,7 @@
     </div>
   </div>
   <div style="text-align:center;padding:12px 0 24px;color:var(--ghost);font-size:11px;letter-spacing:.07em;" aria-label="App version">
-    ብርታት · Birtat · v7.0 · Personal Discipline OS
+    ብርታት · Birtat · v7.1 · Personal Discipline OS
   </div>
   <input type="file" id="imp-file" accept=".json" style="display:none;" onchange="handleImport(event)" aria-label="Import backup file"/>
 </main>
@@ -474,17 +416,13 @@
 ══════════════════════════════════════════════════ -->
 <main id="pg-systems" class="page" role="main" aria-label="Personal discipline command center modules">
   <header class="v7-page-head"><div class="t-label">BIRTAT 7.0 · SYSTEMS</div><h1 class="t-title">Command Center</h1><p class="v7-muted">Practical systems. Honest records. No artificial pressure.</p></header>
-  <div class="v7-system-tabs" role="tablist" aria-label="Discipline modules">
+  <div class="v7-system-tabs" role="tablist" aria-label="Main systems">
     <button class="sys-tab on" data-sys="faith" onclick="V7_openSystemTab('faith')">✝️ Faith</button>
-    <button class="sys-tab" data-sys="academics" onclick="V7_openSystemTab('academics')">🎓 Academics</button>
-    <button class="sys-tab" data-sys="timetable" onclick="V7_openSystemTab('timetable')">📅 Timetable</button>
-    <button class="sys-tab" data-sys="fitness" onclick="V7_openSystemTab('fitness')">🏋️ Fitness</button>
-    <button class="sys-tab" data-sys="phone" onclick="V7_openSystemTab('phone')">📵 Phone</button>
-    <button class="sys-tab" data-sys="personal" onclick="V7_openSystemTab('personal')">📚 Personal</button>
-    <button class="sys-tab" data-sys="habits" onclick="V7_openSystemTab('habits')">✓ Habits</button>
-    <button class="sys-tab" data-sys="reviews" onclick="V7_openSystemTab('reviews')">📝 Reviews</button>
-    <button class="sys-tab" data-sys="settings" onclick="V7_openSystemTab('settings')">⚙️ Settings</button>
+    <button class="sys-tab" data-sys="academics" onclick="V7_openSystemTab('academics')">🎓 Study</button>
+    <button class="sys-tab" data-sys="fitness" onclick="V7_openSystemTab('fitness')">🏋️ Physique</button>
+    <button class="sys-tab" data-sys="personal" onclick="V7_openSystemTab('personal')">🌱 Personal</button>
   </div>
+  <div class="v7-tools-select-wrap"><label for="v7-secondary-tool">More tools</label><select id="v7-secondary-tool" class="finput" onchange="if(this.value)V7_openSystemTab(this.value)"><option value="">Choose a tool…</option><option value="timetable">📅 Class timetable & planner</option><option value="phone">📵 Phone discipline</option><option value="habits">✓ Habits</option><option value="reviews">📝 Daily & weekly reviews</option><option value="settings">⚙️ Settings</option></select></div>
 
   <section class="sys-panel" data-panel="faith" aria-label="Faith workspace">
     <div class="v7-section-title"><span>Faith first</span><small>Private personal practice log</small></div>
@@ -554,17 +492,41 @@
 </main>
 
 
+<!-- Secondary destinations live here so the main navigation stays calm. -->
+<main id="pg-more" class="page" role="main" aria-label="More Birtat tools">
+  <header class="v7-page-head more-head"><div class="t-label">BIRTAT · YOUR TOOLS</div><h1 class="t-title">More</h1><p class="v7-muted">Everything else, kept out of your way until you need it.</p></header>
+  <section class="more-group" aria-label="Core systems">
+    <div class="more-group-title">Your systems</div>
+    <div class="more-grid">
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('faith')"><span>✝️</span><strong>Faith</strong><small>Prayer and spiritual routine</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('academics')"><span>🎓</span><strong>Academics</strong><small>Study and course records</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('timetable')"><span>📅</span><strong>Timetable</strong><small>Classes and time blocks</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('fitness')"><span>🏋️</span><strong>Physique</strong><small>Training and recovery</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('phone')"><span>📵</span><strong>Phone discipline</strong><small>Limits and focus periods</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('personal')"><span>🌱</span><strong>Personal</strong><small>Family, reading and skills</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('habits')"><span>✓</span><strong>Habits</strong><small>Schedules and consistency</small></button>
+      <button class="more-tile" onclick="App_nav('systems');V7_openSystemTab('reviews')"><span>📝</span><strong>Reviews</strong><small>Daily and Sunday review</small></button>
+    </div>
+  </section>
+  <section class="more-group" aria-label="Planning and records">
+    <div class="more-group-title">Planning and records</div>
+    <button class="more-link" onclick="App_nav('calendar')"><span>📆</span><span><strong>Calendar</strong><small>Past days and upcoming dates</small></span><b>›</b></button>
+    <button class="more-link" onclick="App_nav('semester')"><span>🎓</span><span><strong>Semester</strong><small>Course progress and semester goals</small></span><b>›</b></button>
+    <button class="more-link" onclick="App_nav('review')"><span>📊</span><span><strong>Analytics</strong><small>Progress over time</small></span><b>›</b></button>
+    <button class="more-link" onclick="App_nav('profile')"><span>👤</span><span><strong>Profile and data</strong><small>Backup, restore and personal records</small></span><b>›</b></button>
+    <button class="more-link" onclick="App_nav('systems');V7_openSystemTab('settings')"><span>⚙️</span><span><strong>Settings</strong><small>Targets and preferences</small></span><b>›</b></button>
+  </section>
+  <p class="more-footnote">Your records remain on this device. Export a backup before updating the live site.</p>
+</main>
+
 <!-- ══════════════════════════════════════════════════
      BOTTOM NAV
 ══════════════════════════════════════════════════ -->
 <nav id="nav" role="navigation" aria-label="Main navigation">
-  <div class="nb rip on" data-p="home"     onclick="App_nav('home')"     role="tab" tabindex="0" aria-selected="true"  aria-label="Home dashboard">    <span class="ni" aria-hidden="true">🏠</span><span class="nl">Home</span></div>
-  <div class="nb rip"    data-p="today"    onclick="App_nav('today')"    role="tab" tabindex="0" aria-selected="false" aria-label="Today's tracker">    <span class="ni" aria-hidden="true">☀️</span><span class="nl">Today</span></div>
-  <div class="nb rip"    data-p="systems"  onclick="App_nav('systems')"  role="tab" tabindex="0" aria-selected="false" aria-label="Command center systems"> <span class="ni" aria-hidden="true">⚙️</span><span class="nl">Systems</span></div>
-  <div class="nb rip"    data-p="semester" onclick="App_nav('semester')" role="tab" tabindex="0" aria-selected="false" aria-label="Semester"> <span class="ni" aria-hidden="true">🎓</span><span class="nl">Semester</span></div>
-  <div class="nb rip"    data-p="calendar" onclick="App_nav('calendar')" role="tab" tabindex="0" aria-selected="false" aria-label="Calendar">           <span class="ni" aria-hidden="true">📅</span><span class="nl">Calendar</span></div>
-  <div class="nb rip"    data-p="review"   onclick="App_nav('review')"   role="tab" tabindex="0" aria-selected="false" aria-label="Weekly review">      <span class="ni" aria-hidden="true">📊</span><span class="nl">Review</span></div>
-  <div class="nb rip"    data-p="profile"  onclick="App_nav('profile')"  role="tab" tabindex="0" aria-selected="false" aria-label="Profile and settings"><span class="ni" aria-hidden="true">👤</span><span class="nl">Profile</span></div>
+  <div class="nb rip on" data-p="home" onclick="App_nav('home')" role="tab" tabindex="0" aria-selected="true" aria-label="Home dashboard"><span class="ni" aria-hidden="true">⌂</span><span class="nl">Home</span></div>
+  <div class="nb rip" data-p="today" onclick="App_nav('today')" role="tab" tabindex="0" aria-selected="false" aria-label="Today's tracker"><span class="ni" aria-hidden="true">✓</span><span class="nl">Today</span></div>
+  <div class="nb rip" data-p="systems" onclick="App_nav('systems')" role="tab" tabindex="0" aria-selected="false" aria-label="Focus tools"><span class="ni" aria-hidden="true">✦</span><span class="nl">Focus</span></div>
+  <div class="nb rip" data-p="more" onclick="App_nav('more')" role="tab" tabindex="0" aria-selected="false" aria-label="More tools and pages"><span class="ni" aria-hidden="true">•••</span><span class="nl">More</span></div>
 </nav>
 
 </div><!-- /app -->

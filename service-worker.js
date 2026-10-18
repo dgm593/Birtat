@@ -4,7 +4,7 @@
    Version bump forces cache refresh on update.
 ═══════════════════════════════════════════════════ */
 
-const CACHE_NAME    = 'birtat-v7-0';
+const CACHE_NAME    = 'birtat-v7-1-daily-command';
 const OFFLINE_URL   = './index.html';
 
 const PRECACHE_ASSETS = [

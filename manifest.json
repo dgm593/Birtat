@@ -1,7 +1,7 @@
 {
   "name": "ብርታት — Birtat",
   "short_name": "ብርታት",
-  "description": "Your personal discipline command center for faith, Biomedical Engineering, fitness and phone discipline",
+  "description": "A simpler daily command center for faith, Biomedical Engineering, fitness and phone discipline",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,10 +9,25 @@
   "theme_color": "#090909",
   "orientation": "portrait-primary",
   "lang": "en",
-  "categories": ["productivity", "lifestyle", "health", "fitness"],
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "health",
+    "fitness"
+  ],
   "icons": [
-    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
     {
@@ -20,14 +35,24 @@
       "short_name": "Today",
       "description": "Open today's habit tracker",
       "url": "./index.html#today",
-      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "assets/icons/icon.svg",
+          "sizes": "any"
+        }
+      ]
     },
     {
       "name": "Calendar",
       "short_name": "Calendar",
       "description": "Open the growth calendar",
       "url": "./index.html#calendar",
-      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "assets/icons/icon.svg",
+          "sizes": "any"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false,

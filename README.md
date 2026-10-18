@@ -1,44 +1,43 @@
-# Birtat 7.0 · Personal Discipline Command Center
+# Birtat 7.1 · Simplified Interface Preview
 
-Birtat remains a static, installable Progressive Web App. It uses the existing HTML/CSS/JavaScript architecture and browser `localStorage`; it does not require a backend, account, external API, or third-party runtime library.
+Birtat 7.1 is a **UI refinement of the existing Birtat 7.0 package**, not a rebuild. The goal is to reduce the number of decisions shown on the home screen while keeping the underlying features available.
 
-## Files
+## What's changed
 
-- `index.html` — existing app plus command-center dashboard and systems workspace.
-- `style.css` — preserved dark-and-gold design with responsive V7 module styles.
-- `script.js` — existing app logic plus V7 data migration, timetable, study, fitness, phone, faith, habit, review and personal-development logic.
-- `manifest.json` — PWA metadata and app shortcuts.
-- `service-worker.js` — cache-first offline strategy, bumped to `birtat-v7-0`.
-- `assets/icons/icon.svg` — restored icon asset required by the service-worker precache list.
-- `MIGRATION-NOTES.md` — schema and backward-compatibility notes.
-- `TEST-REPORT.md` — checks performed and limitations.
+- Main navigation is now **Home · Today · Focus · More**.
+- Home shows the greeting/date, today's class schedule, a gym-day/rest-day card, a compact next-commitment summary, progress, and quick actions.
+- Repeated legacy dashboard sections (six-pillar grid, separate focus list, score legend, and duplicated stats) are no longer shown on Home. Their source logic and the full Today/Calendar/Review pages remain.
+- Systems has four primary tabs (Faith, Study, Physique, Personal); Timetable, Phone, Habits, Reviews, and Settings are grouped under one More tools selector. The main bottom navigation remains Home, Today, Focus, and More.
+- Profile memory entries are filed into one collapsible Memory Archive, grouped by month and then by day, with search retained.
+- Dark-and-gold styling and the existing mobile-first layout are retained.
+- The service-worker cache version is updated to `birtat-v7-1-daily-command` so the UI assets can refresh after a future deployment.
 
-## Run locally
+## Data and hosting safety
 
-Use a local static HTTP server rather than opening `index.html` directly. From this folder, for example:
+- This package has **not** been deployed to GitHub Pages.
+- The `birtat-v4` local-storage key, migration logic, application state schema, and data-writing logic were not intentionally changed. In `script.js`, the only code change is the addition of a `more` navigation case.
+- Keep the current GitHub Pages repository, publishing branch/folder, custom domain, and URL. Do not upload a JSON personal backup into the repository.
+- Before deploying, export a JSON backup from the live app and keep a copy of the current published files or use Git history for rollback.
+- Because the live repository URL and publishing path have not been provided in this conversation, this is a separate package for review, not a live update.
+
+## Local preview
+
+From this folder, run:
 
 ```bash
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000`. Service workers are supported on localhost for development. For installation on Android, serve the app over HTTPS (for example, through the existing GitHub Pages site).
+Then visit `http://localhost:8000`. A local HTTP server is preferable to opening `index.html` directly because service workers require HTTPS or localhost.
 
-## Deploy to the existing static host
+## Safe review checklist
 
-1. **Back up your current app data first.** In Birtat, use the existing Profile / Data export function to download a JSON backup.
-2. Keep a copy of the current repository files before replacing them.
-3. Copy the contents of this package into the same published project root. Preserve the `assets/icons/icon.svg` path.
-4. Commit and push the updated files to the same branch and path currently used by the existing static host. Do not change the site origin or subpath unless you intend to move browser-local data manually.
-5. Open the existing HTTPS site while online, let it load once, then reload it. The service-worker cache name changed to `birtat-v7-0` so the old cache is replaced on activation.
-6. Open **Systems → Settings** and verify the profile and targets. Check **Systems → Timetable** and **Systems → Academics** before relying on the schedule.
-7. Test offline use by opening the app online once, then disconnecting the device and reopening it. Reconnect before restoring a backup or deploying another version.
+1. Open Home and check the reduced layout.
+2. Use More to open Faith, Academics, Timetable, Physique, Phone discipline, Personal, Habits, Reviews, Settings, Calendar, Semester, Analytics, and Profile/data.
+3. Confirm the Today tracker and existing records behave as before.
+4. Confirm the browser's existing local data remains visible. Do not test migration on your only copy of important data.
+5. Test install/offline behavior on the same origin before any live deployment.
 
-## Data safety
+## Important limitation
 
-The migration keeps the existing `birtat-v4` storage key and preserves legacy `days`, `reviews`, `settings`, `semester`, and `meta` data. On a first upgrade from an older `birtat-v4` payload, it stores the raw pre-upgrade JSON in local storage as `birtat-v4-pre-v7-backup`. If present, this snapshot can be downloaded from **Systems → Settings → Data safety**. The existing Profile / Data JSON export remains the recommended backup/restore workflow.
-
-Browser storage is local to the site origin and browser profile. Clearing site data, changing browsers, or changing the site origin can make local records unavailable. Keep periodic JSON backups somewhere outside the browser.
-
-## Phone blocking limitation
-
-A normal web PWA cannot pause arbitrary Android apps or read all system-wide screen-time data. Birtat stores manual screen-time entries, phone-free focus sessions, rules and scrolling triggers. Use Android **Digital Wellbeing → Focus mode**, **App timers** and **Bedtime mode** for actual system-level restrictions.
+A headless browser test was attempted in this environment but navigation was blocked by the environment policy. JavaScript syntax, HTML structure, navigation target coverage, manifest validity, and service-worker precache paths were checked; visual Android testing and a real offline round-trip still need to be done on your device.

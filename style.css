@@ -1469,3 +1469,78 @@ button, .rip, input, textarea, select { touch-action: manipulation; }
 .v7-allocation-row .finput{margin:0!important;min-height:36px;padding:6px 8px;text-align:right}
 .v7-allocation-row small{font-size:10px;color:var(--muted)}
 .v7-allocation-total{display:block;text-align:right;font-size:12px;color:var(--gold);padding-top:12px}
+
+
+/* Birtat 7.1 interface refinement: fewer primary choices, same underlying tools. */
+.home-hero-simple { padding-bottom: 10px; }
+.home-hero-simple .hero-name { margin-bottom: 5px; }
+#pg-home #v7-dashboard { padding-bottom: 8px; }
+#pg-home .v7-home-card { margin-left: 12px; margin-right: 12px; }
+#pg-home .v7-home-actions { padding: 0 12px 16px; }
+#nav { justify-content: space-around; }
+#nav .nb { flex: 1 1 25%; }
+.more-head { padding-bottom: 8px; }
+.more-group { padding: 0 12px 12px; }
+.more-group-title { margin: 8px 3px 10px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.more-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.more-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 108px; padding: 14px; border: 1px solid var(--border); border-radius: 15px; background: linear-gradient(145deg,rgba(23,23,20,.98),rgba(15,15,14,.98)); color: var(--text); text-align: left; cursor: pointer; }
+.more-tile > span { font-size: 20px; }
+.more-tile strong, .more-link strong { font-size: 13px; font-weight: 800; }
+.more-tile small, .more-link small { color: var(--muted); font-size: 10px; line-height: 1.4; }
+.more-tile:active, .more-link:active { border-color: rgba(212,175,55,.5); }
+.more-link { display: flex; width: 100%; align-items: center; gap: 12px; padding: 13px 12px; margin-bottom: 7px; border: 1px solid var(--border); border-radius: 13px; background: var(--raised); color: var(--text); text-align: left; cursor: pointer; }
+.more-link > span:first-child { width: 28px; font-size: 19px; text-align: center; }
+.more-link > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: 3px; }
+.more-link b { color: var(--gold); font-size: 22px; font-weight: 500; }
+.more-footnote { padding: 0 16px 18px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+/* Birtat 7.1 refinement: calm daily cards, compact systems navigation, filed memories */
+.v7-home-card { border-color: rgba(212,175,55,.13); }
+.v7-today-schedule-card { background: radial-gradient(120% 100% at 100% 0%, rgba(212,175,55,.10), transparent 58%), linear-gradient(145deg,rgba(23,23,20,.99),rgba(13,13,12,.99)); }
+.v7-home-events { display:flex; flex-direction:column; gap:0; }
+.v7-home-event { display:grid; grid-template-columns:52px 2px minmax(0,1fr); gap:11px; align-items:stretch; padding:11px 0; border-bottom:1px solid rgba(255,255,255,.055); }
+.v7-home-event:last-child { border-bottom:0; }
+.v7-home-event-time { color:var(--gold); font-size:12px; line-height:1.25; font-weight:800; font-variant-numeric:tabular-nums; }
+.v7-home-event-time small { display:block; margin-top:4px; color:var(--muted); font-size:10px; font-weight:650; }
+.v7-home-event-line { display:block; border-radius:8px; background:linear-gradient(180deg,#D4AF37,rgba(212,175,55,.18)); }
+.v7-home-event-main { min-width:0; padding:1px 0; }
+.v7-home-event-main strong { display:block; color:var(--text); font-size:13px; line-height:1.35; }
+.v7-home-event-main small { display:block; margin-top:4px; color:var(--muted); font-size:10px; line-height:1.4; }
+.v7-home-empty { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:15px 2px 8px; }
+.v7-home-empty>span { font-size:22px; }
+.v7-home-empty strong { font-size:13px; }
+.v7-home-empty small { color:var(--muted); font-size:11px; line-height:1.5; }
+.v7-gym-status { display:flex; align-items:center; gap:12px; padding:8px 0 12px; }
+.v7-gym-mark { display:grid; place-items:center; width:43px; height:43px; flex:0 0 43px; border-radius:14px; background:rgba(212,175,55,.10); border:1px solid rgba(212,175,55,.20); color:var(--gold); font-size:19px; }
+.v7-gym-status strong { display:block; font-size:15px; color:var(--text); }
+.v7-gym-status small { display:block; margin-top:4px; color:var(--muted); font-size:11px; line-height:1.45; }
+.v7-gym-status.is-rest .v7-gym-mark { background:rgba(130,150,180,.10); border-color:rgba(130,150,180,.20); color:#b5c0d3; }
+.v7-gym-status.is-done .v7-gym-mark { background:rgba(90,170,120,.12); border-color:rgba(90,170,120,.25); color:#8bd0a1; }
+.v7-gym-cta { width:100%; display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-radius:12px; border:1px solid rgba(212,175,55,.25); background:rgba(212,175,55,.075); color:var(--gold); font-size:12px; font-weight:800; }
+.v7-tools-select-wrap { padding:0 12px 12px; }
+.v7-tools-select-wrap label { display:block; color:var(--muted); font-size:11px; font-weight:750; margin:0 0 5px 3px; }
+.v7-tools-select-wrap .finput { margin:0; min-height:43px; background:var(--raised); border-color:var(--border); }
+.v7-system-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; overflow:visible; padding-bottom:8px; }
+.sys-tab { min-width:0; padding:9px 5px; border-radius:12px; font-size:11px; white-space:normal; }
+.mem-archive-folder { margin:0 12px 12px; border:1px solid rgba(212,175,55,.2); border-radius:17px; overflow:hidden; background:linear-gradient(145deg,rgba(23,23,20,.98),rgba(13,13,12,.98)); }
+.mem-archive-folder>summary,.mem-month-folder>summary,.mem-day-folder>summary { list-style:none; display:flex; align-items:center; gap:11px; cursor:pointer; }
+.mem-archive-folder>summary::-webkit-details-marker,.mem-month-folder>summary::-webkit-details-marker,.mem-day-folder>summary::-webkit-details-marker { display:none; }
+.mem-archive-folder>summary { padding:15px; background:rgba(212,175,55,.055); }
+.mem-folder-icon { font-size:23px; }
+.mem-archive-folder summary strong,.mem-month-folder summary strong,.mem-day-folder summary strong { display:block; color:var(--text); font-size:12px; }
+.mem-archive-folder summary small,.mem-month-folder summary small,.mem-day-folder summary small { display:block; color:var(--muted); font-size:10px; margin-top:4px; }
+.mem-folder-chevron { margin-left:auto; color:var(--gold); font-size:18px; transition:transform .2s ease; }
+.mem-archive-folder[open]>summary .mem-folder-chevron,.mem-month-folder[open]>summary .mem-folder-chevron,.mem-day-folder[open]>summary .mem-folder-chevron { transform:rotate(180deg); }
+.mem-archive-body { padding:12px; }
+.mem-archive-body>.finput { margin:0 0 10px; }
+.mem-month-folder { border:1px solid var(--border); border-radius:13px; overflow:hidden; margin-bottom:8px; background:rgba(255,255,255,.015); }
+.mem-month-folder>summary { padding:12px; }
+.mem-folder-icon,.mem-day-icon { width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:rgba(212,175,55,.09); }
+.mem-month-label,.mem-day-label { flex:1; min-width:0; }
+.mem-month-content { padding:0 9px 8px; }
+.mem-day-folder { margin:0 0 6px; border-radius:10px; background:rgba(0,0,0,.17); border:1px solid rgba(255,255,255,.045); }
+.mem-day-folder>summary { padding:10px; }
+.mem-day-icon { width:27px; height:27px; font-size:13px; background:rgba(255,255,255,.04); }
+.mem-day-content { padding:0 12px 13px 47px; color:var(--text); font-size:12px; line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; }
+.mem-empty { padding:14px 8px; color:var(--muted); font-size:12px; line-height:1.6; }
+@media(max-width:360px) { .v7-system-tabs { gap:4px; padding-left:8px; padding-right:8px; } .sys-tab { font-size:10px; padding:9px 3px; } .v7-home-event { grid-template-columns:46px 2px minmax(0,1fr); gap:8px; } }

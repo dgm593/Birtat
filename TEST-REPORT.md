@@ -1,30 +1,40 @@
-# Birtat 7.0 test report
+# Birtat 7.1 UI Refinement · Test Report
 
-## Automated checks completed
+## Checks completed in this refinement
 
-- JavaScript syntax: `node --check script.js` — passed.
-- Service-worker syntax: `node --check service-worker.js` — passed.
-- HTML parsed with Python's `HTMLParser` — passed.
+- `node --check script.js` — passed.
+- `node --check service-worker.js` — passed.
 - `manifest.json` parsed as valid JSON — passed.
-- Static inline-handler scan — no unresolved static handlers found.
+- HTML parsed with Python's `HTMLParser` — passed.
 - Duplicate HTML IDs — none found.
-- Service-worker precache paths — all referenced files exist in the package.
-- Logic tests using Node's VM with a mocked DOM and local-storage implementation — **51/51 passed**.
+- Required local PWA files and service-worker precache paths — present.
+- Main navigation target pages (`home`, `today`, `systems`, `more`) — present in markup and covered by navigation code.
+- All More-page destinations point to existing page IDs or existing system-tab IDs — statically checked.
+- Compared `script.js` against the Birtat 7.0 package: the only change is a `more` navigation switch case. No storage key, migration, or record-writing code was changed.
 
-## Tested logic
+## Browser checks attempted
 
-- Legacy data migration and pre-V7 snapshot creation.
-- Preservation of legacy habits, study sessions, reviews and semester course data.
-- Bio-fluid Mechanics inclusion and the 17 default recurring timetable events.
-- Cancellation/restoration of one class occurrence without deleting the recurring class.
-- Time-block conflict detection and invalid time rejection.
-- Focused study session logging and legacy day-record compatibility.
-- Workout exercise detail persistence and built-in Upper/Lower templates.
-- Custom habit `done` state, pause-period history, time-zone date selection and Monday-start weeks.
-- Manual screen-time logging and faith schedule storage.
-- Import structure validation, JSON restore, de-duplication and simulated reload persistence.
-- Rendering entry points for the nine V7 workspace tabs and command-center dashboard against mocked DOM elements.
+A Playwright smoke test was attempted against local HTTP and file URLs, but Chromium navigation was blocked by the environment (`ERR_BLOCKED_BY_ADMINISTRATOR`). Therefore, the click-through smoke test could not complete here.
 
-## Not verified in this environment
+## Not yet verified
 
-A real Android browser session and service-worker installation/offline round-trip were not completed. The available headless Chromium process failed to launch reliably in this environment, so the checks above are not a substitute for visual browser testing. Before relying on the deployment, test the app on your Android browser and verify: installability, navigation, keyboard/input behavior, offline logging, JSON export/import and a real migration with your own saved data.
+- Visual appearance on the user's Android phone.
+- Actual taps through every More link in a real browser.
+- Service-worker activation and offline round-trip.
+- Data preservation with the user's real live local-storage records.
+- Deployment to GitHub Pages (intentionally not performed).
+
+## Release recommendation
+
+Treat this as a preview package until it has been opened on the user's device and the backup, navigation, and offline checks pass. Keep the current live site untouched until then.
+
+
+## Follow-up simplification checks
+
+- Updated Home markup contains dedicated containers for today's classes and gym/rest status.
+- Systems primary tabs reduced to four; secondary tools remain present in the selector.
+- Memory archive markup is collapsible and Timeline_render groups existing memorableMoment entries by YYYY-MM, with individual date folders.
+- Service-worker cache version bumped for the new static assets.
+- `node --check script.js` and `node --check service-worker.js` passed after these changes.
+- Manifest JSON and HTML parser checks passed after these changes.
+- Real Android visual testing and a live offline round-trip are still not verified in this environment.

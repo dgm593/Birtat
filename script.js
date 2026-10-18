@@ -1425,35 +1425,32 @@ function Timeline_render(filter) {
   for (const [key,rec] of Object.entries(AppState.days||{})) {
     const txt = rec?.memorableMoment?.trim();
     if (!txt || !/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
-    if (filter && !txt.toLowerCase().includes(filter.toLowerCase())) continue;
+    if (filter && !txt.toLowerCase().includes(filter.toLowerCase()) && !key.includes(filter)) continue;
     entries.push({ date: V7_parseDate(key), text: txt, key });
   }
-
   const container = document.getElementById('mem-timeline');
   if (!container) return;
-
   if (!entries.length) {
-    container.innerHTML = `<div style="padding:0 14px 12px;">
-      <div class="card card-p" style="text-align:center;color:var(--ghost);font-style:italic;font-size:14px;">
-        No memories yet.<br>
-        <span style="font-size:12px;">Answer "What made today memorable?" each night.</span>
-      </div>
-    </div>`;
+    container.innerHTML = `<div class="mem-empty">${filter ? 'No memories match your search.' : 'No memories saved yet. Add one in Today’s tracker and it will be filed here automatically.'}</div>`;
     return;
   }
-
-  // Newest first
-  entries.reverse();
-  container.innerHTML = entries.map(e => `
-    <div class="mem-card">
-      <div class="mem-date">
-        ${e.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-      </div>
-      <div class="mem-text">"${e.text}"</div>
-    </div>`
-  ).join('');
+  entries.sort((a,b)=>b.key.localeCompare(a.key));
+  const months = new Map();
+  for (const e of entries) {
+    const monthKey=e.key.slice(0,7);
+    if(!months.has(monthKey)) months.set(monthKey,[]);
+    months.get(monthKey).push(e);
+  }
+  container.innerHTML = [...months.entries()].map(([monthKey,items],idx)=>{
+    const monthDate=V7_parseDate(monthKey+'-01');
+    const monthLabel=monthDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const dayHtml=items.map(e=>{
+      const label=e.date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+      return `<details class="mem-day-folder"><summary><span class="mem-day-icon">📄</span><span class="mem-day-label"><strong>${escapeHtml(label)}</strong><small>Daily memory</small></span><span class="mem-folder-chevron">⌄</span></summary><div class="mem-day-content">${escapeHtml(e.text)}</div></details>`;
+    }).join('');
+    return `<details class="mem-month-folder" ${filter||idx===0?'open':''}><summary><span class="mem-folder-icon">📂</span><span class="mem-month-label"><strong>${escapeHtml(monthLabel)}</strong><small>${items.length} ${items.length===1?'memory':'memories'}</small></span><span class="mem-folder-chevron">⌄</span></summary><div class="mem-month-content">${dayHtml}</div></details>`;
+  }).join('');
 }
-
 function Timeline_filter(val) {
   Timeline_render(val);
 }
@@ -1669,6 +1666,7 @@ function App_nav(page) {
     case 'review':   Review_render();      break;
     case 'profile':  Profile_render();     break;
     case 'systems':  V7_systemsRender();  break;
+    case 'more':     break;
   }
 }
 
@@ -1939,6 +1937,8 @@ function V7_eventConflicts(date,start,end,ignoreId=''){
 function V7_openSystemTab(tab){
   V7_systemTab=tab||'faith';
   document.querySelectorAll('.sys-tab').forEach(b=>b.classList.toggle('on',b.dataset.sys===V7_systemTab));
+  const secondary=document.getElementById('v7-secondary-tool');
+  if(secondary) secondary.value=['timetable','phone','habits','reviews','settings'].includes(V7_systemTab)?V7_systemTab:'';
   document.querySelectorAll('.sys-panel').forEach(p=>p.hidden=p.dataset.panel!==V7_systemTab);
   V7_renderSystemTab();
 }
@@ -2071,9 +2071,19 @@ function V7_renderDashboard(){
   const priorityHtml=[['✝️','Faith',Object.values(faith).filter(Boolean).length+' commitments recorded'],['🎓','Academics',`${Math.floor(mins/60)}h ${mins%60}m / ${Math.floor(target/60)}h focused study`],['🏋️','Physique',`${weekWorkouts.length} / ${AppState.profile.gymTarget} workouts this week`],['👪','Family & future',`${AppState.personal.readingSessions.filter(r=>r.date===date).length} reading sessions · ${AppState.personal.familyCommitments.filter(f=>f.date===date&&!f.done).length} family commitments today`]];
   document.getElementById('v7-priorities').innerHTML=priorityHtml.map(([icon,name,summary])=>`<div class="v7-priority"><span>${icon}</span><div><strong>${name}</strong><small>${escapeHtml(summary)}</small></div></div>`).join('');
   document.getElementById('v7-plan-advice').textContent=(events.length>=5?'Heavy schedule: protect essential faith practice, meals, sleep and recovery. Move low-priority work rather than pushing everything late.':'Keep the next action clear and leave some unallocated time for recovery or unexpected changes.')+` Sleep target: ${AppState.profile.bedtime||'22:00'} · wake ${AppState.profile.wakeTime||'06:00'}.`;
-  document.getElementById('v7-dashboard-agenda').innerHTML=events.length?events.slice(0,5).map(e=>`<div class="v7-list-row"><div><strong>${escapeHtml(e.title)}</strong><small>${escapeHtml(e.startTime)}–${escapeHtml(e.endTime)} · ${escapeHtml(e.location||e.kind||'')}</small></div><button class="v7-inline" onclick="App_nav('systems');V7_openSystemTab('timetable')">Open</button></div>`).join('')+(events.length>5?`<p class="v7-muted">${events.length-5} more scheduled commitments. Open the agenda to see all.</p>`:''):'<p class="v7-empty">No scheduled classes or blocks today. Keep room for recovery.</p>';
-  const hasMorning=events.some(e=>V7_timeMinutes(e.startTime)<12*60),hasAfternoon=events.some(e=>V7_timeMinutes(e.startTime)>=12*60);document.getElementById('v7-day-mode').textContent=hasMorning?'Morning-class day':hasAfternoon?'Afternoon-class day':'Free or lighter day';
-  const next=events.find(e=>V7_timeMinutes(e.endTime)>V7_timeMinutes(V7_nowTime()));document.getElementById('v7-next-task').textContent=next?`${next.title} · ${next.startTime}–${next.endTime}`:'No upcoming scheduled event';
+  const classEvents=events.filter(e=>e.kind==='class'||/class|lecture|lab|workshop|ceed|biochemistry|electromagnetic|bio-fluid|inclusiveness|electronics|data structures/i.test(e.title));
+  const classHost=document.getElementById('v7-home-classes');
+  if(classHost) classHost.innerHTML=classEvents.length?classEvents.map(e=>`<div class="v7-home-event"><span class="v7-home-event-time">${escapeHtml(e.startTime)}<small>${escapeHtml(e.endTime)}</small></span><span class="v7-home-event-line"></span><span class="v7-home-event-main"><strong>${escapeHtml(e.title)}</strong><small>${escapeHtml(e.location||'Class / scheduled session')}</small></span></div>`).join(''):'<div class="v7-home-empty"><span>☀️</span><strong>No classes scheduled today</strong><small>Use the open space for focused study or recovery.</small></div>';
+  const gymHost=document.getElementById('v7-home-gym');
+  if(gymHost){
+    const dayName=V7_dayName(V7_parseDate(date).getDay()),trainingDays=(AppState.profile.trainingDays||[]).slice().sort((a,b)=>['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(a)-['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(b));
+    const planned=trainingDays.includes(dayName),completed=AppState.fitness.workouts.some(w=>w.date===date&&w.status==='completed');
+    const split=['Upper A','Lower A','Upper B','Lower B'];
+    const splitName=planned?split[Math.max(0,trainingDays.indexOf(dayName))%split.length]:'Rest & recovery';
+    gymHost.innerHTML=completed?`<div class="v7-gym-status is-done"><span class="v7-gym-mark">✓</span><div><strong>Workout completed</strong><small>Great work. Recovery is part of progress.</small></div></div>`:planned?`<div class="v7-gym-status is-training"><span class="v7-gym-mark">✦</span><div><strong>${escapeHtml(splitName)} day</strong><small>Today is one of your planned ${AppState.profile.gymTarget||4} weekly sessions.</small></div></div><button class="v7-gym-cta" onclick="App_nav('systems');V7_openSystemTab('fitness')">Open today's workout <span>→</span></button>`:`<div class="v7-gym-status is-rest"><span class="v7-gym-mark">☾</span><div><strong>Rest & recovery day</strong><small>No gym session planned today. Eat well, hydrate, and recover.</small></div></div>`;
+  }
+  const hasMorning=events.some(e=>V7_timeMinutes(e.startTime)<12*60),hasAfternoon=events.some(e=>V7_timeMinutes(e.startTime)>=12*60);document.getElementById('v7-day-mode').textContent=hasMorning?'Morning classes':hasAfternoon?'Afternoon classes':'A lighter day';
+  const next=events.find(e=>V7_timeMinutes(e.endTime)>V7_timeMinutes(V7_nowTime()));document.getElementById('v7-next-task').textContent=next?`${next.title} · ${next.startTime}–${next.endTime}`:'Your schedule is clear';
   document.getElementById('v7-study-progress').textContent=`${mins} / ${target} focused minutes`;document.getElementById('v7-study-progress-bar').style.width=Math.min(100,mins/Math.max(1,target)*100)+'%';document.getElementById('v7-gym-progress').textContent=`${weekWorkouts.length} / ${AppState.profile.gymTarget} sessions`;document.getElementById('v7-phone-progress').textContent=todayScreen?`${(todayScreen/60).toFixed(1)} h manually logged`:legacyScreen?`${legacyScreen} h legacy tracker entry`:'Not recorded';document.getElementById('v7-task-progress').textContent=`${doneAssignments} completed · ${openAssignments} open academic tasks`;
   const review=AppState.dailyReviews[date],weeklyDay=Number(AppState.profile.weeklyReviewDay??0);document.getElementById('v7-review-status').textContent=review?.savedAt?'Evening review saved':V7_parseDate(date).getDay()===weeklyDay?'Evening review not recorded · weekly review due today':'Evening review not recorded';
 }
