@@ -22,3 +22,11 @@ This is a separate test package. It has not been deployed to GitHub Pages. Back 
 - Reduced the Systems workspace from nine visible tab buttons to four primary destinations: Faith, Study, Physique, and Personal. Timetable, Phone, Habits, Reviews, and Settings remain accessible through one compact “More tools” selector.
 - Reworked Profile memory timeline into one collapsible Memory Archive, with month folders and individual day folders. New memories remain filed by their saved date instead of accumulating as an endless open list.
 - Bumped the service-worker cache name to refresh these interface assets on a future deployment. Storage key and data schema remain unchanged.
+
+## Birtat 7.2 · Premium Home Preview
+- Elevated the Home page with a cinematic black-and-gold hero, refined typography, layered card surfaces, restrained gold highlights, and more deliberate spacing.
+- Styled today's classes and gym/rest card as the primary daily cards.
+- Refined progress rows and quick-action buttons for a more polished mobile experience.
+- Added reduced-motion support and bumped the service-worker cache name.
+- No application logic, storage keys, data schema, record-writing functions, timetable definitions, or navigation behavior were intentionally changed.
+- This is a preview package only. It has not been deployed.

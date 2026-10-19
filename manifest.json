@@ -1,7 +1,7 @@
 {
   "name": "ብርታት — Birtat",
   "short_name": "ብርታት",
-  "description": "A simpler daily command center for faith, Biomedical Engineering, fitness and phone discipline",
+  "description": "A premium daily command center for faith, Biomedical Engineering, fitness and phone discipline",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

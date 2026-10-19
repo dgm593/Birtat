@@ -1,6 +1,6 @@
-# Birtat 7.1 · Simplified Interface Preview
+# Birtat 7.2 · Premium Home Preview
 
-Birtat 7.1 is a **UI refinement of the existing Birtat 7.0 package**, not a rebuild. The goal is to reduce the number of decisions shown on the home screen while keeping the underlying features available.
+Birtat 7.2 is a **UI refinement of the existing Birtat 7.0 package**, not a rebuild. The goal is to reduce the number of decisions shown on the home screen while keeping the underlying features available.
 
 ## What's changed
 
@@ -41,3 +41,8 @@ Then visit `http://localhost:8000`. A local HTTP server is preferable to opening
 ## Important limitation
 
 A headless browser test was attempted in this environment but navigation was blocked by the environment policy. JavaScript syntax, HTML structure, navigation target coverage, manifest validity, and service-worker precache paths were checked; visual Android testing and a real offline round-trip still need to be done on your device.
+
+## Premium Home Preview
+This package refines only the Home page's visual presentation using a separate CSS override. The main application logic and local data schema are intentionally preserved. It has not been deployed to GitHub Pages.
+
+Run from this folder with `python -m http.server 8000`, then open `http://localhost:8000`. Use a test browser profile or a backed-up dataset for testing.

@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Birtat gold cross icon">
-  <rect width="512" height="512" rx="112" fill="#090909"/>
-  <rect x="42" y="42" width="428" height="428" rx="88" fill="none" stroke="#D4AF37" stroke-opacity=".45" stroke-width="8"/>
-  <path d="M256 92v328M112 194h288" stroke="#D4AF37" stroke-width="28" stroke-linecap="round"/>
-  <path d="M256 166l-34 34 34 34 34-34z" fill="#F0D36A"/>
-  <circle cx="256" cy="92" r="15" fill="#F0D36A"/><circle cx="256" cy="420" r="15" fill="#F0D36A"/>
-  <circle cx="112" cy="194" r="15" fill="#F0D36A"/><circle cx="400" cy="194" r="15" fill="#F0D36A"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#090909"/>
+<rect x="20" y="20" width="472" height="472" rx="96" fill="none" stroke="#D4AF37" stroke-width="5" opacity=".65"/>
+<path d="M145 130h222v42H278v210h-44V172h-89z" fill="#D4AF37"/>
+<path d="M256 70l14 34 34 14-34 14-14 34-14-34-34-14 34-14z" fill="#F5E5AE"/>
 </svg>
